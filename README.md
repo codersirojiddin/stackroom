@@ -66,3 +66,6 @@ Do not store database passwords, API secrets, private keys or full `DATABASE_URL
 ## Verification
 
 `app.js` passes the Node.js syntax check. Final Go compilation could not be completed in the offline build environment because the container could not download the existing Go dependencies from `proxy.golang.org`.
+## V3.0.2
+
+Fixed Neon Auth OAuth callback handling. When Neon Auth redirects back with `neon_auth_session_verifier`, the app now forwards the verifier to `/api/auth/get-session` so Neon Auth can finalize the session. The verifier is removed from the URL after a successful session exchange.

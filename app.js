@@ -164,9 +164,26 @@ function setAuthMode(mode) {
 
 async function loadSession() {
   try {
-    const payload = await api('/api/auth/get-session');
+    const params = new URLSearchParams(window.location.search);
+    const verifier = params.get('neon_auth_session_verifier');
+    const sessionPath = verifier
+      ? `/api/auth/get-session?neon_auth_session_verifier=${encodeURIComponent(verifier)}`
+      : '/api/auth/get-session';
+
+    // Neon Auth returns to the app with a one-time session verifier after OAuth.
+    // The verifier must be forwarded to /get-session so Neon Auth can exchange it
+    // for the normal application session cookie.
+    const payload = await api(sessionPath);
+
     if (payload?.user && payload?.session) {
       state.user = payload.user;
+
+      if (verifier) {
+        const cleanURL = new URL(window.location.href);
+        cleanURL.searchParams.delete('neon_auth_session_verifier');
+        window.history.replaceState(window.history.state, '', cleanURL.href);
+      }
+
       enterApp();
       await loadProjects();
       return;
@@ -209,23 +226,10 @@ async function submitAuth(event) {
 async function continueWithGoogle() {
   refs.authError.hidden = true;
   refs.googleButton.disabled = true;
-
   try {
-    const payload = await api('/api/auth/sign-in/social', {
-      method: 'POST',
-      body: JSON.stringify({
-        provider: 'google',
-        callbackURL: window.location.origin + '/',
-        requestSignUp: state.authMode === 'signup'
-      })
-    });
-
+    const payload = await api('/api/auth/sign-in/social', { method: 'POST', body: JSON.stringify({ provider: 'google', callbackURL: window.location.origin + '/' }) });
     const redirectURL = payload?.url || payload?.data?.url;
-
-    if (!redirectURL) {
-      throw new Error('Google authentication is not available.');
-    }
-
+    if (!redirectURL) throw new Error('Google authentication is not enabled in Neon Auth yet.');
     window.location.assign(redirectURL);
   } catch (error) {
     showAuthError(error.message);
@@ -233,6 +237,7 @@ async function continueWithGoogle() {
     refs.googleButton.disabled = false;
   }
 }
+
 async function loadProjects() {
   try {
     const payload = await api('/api/projects');

@@ -36,6 +36,7 @@
       </form>
       <div class="auth-divider"><span>or continue with</span></div>
       <button class="button google-button" id="googleButton" type="button"><span class="google-g">G</span> Google</button>
+      <p class="auth-footnote">Authentication is managed by Neon Auth.</p>
     </section>
   </div>
 
@@ -51,6 +52,11 @@
         <button class="nav-item" type="button" data-nav="domains"><span class="nav-icon">@</span> Domains</button>
         <button class="nav-item" type="button" data-nav="attention"><span class="nav-icon">!</span> Attention</button>
       </nav>
+
+      <div class="sidebar-footer">
+        <div class="storage-status"><span class="status-dot"></span><span>Neon workspace</span></div>
+        <p>Your archive is private and scoped to the signed-in account.</p>
+      </div>
     </aside>
 
     <main class="main-content">
@@ -209,6 +215,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script src="app.js"></script>
+  <script src="app.js?v=3.0.2"></script>
 </body>
 </html>
