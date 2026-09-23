@@ -2,7 +2,6 @@
     box-sizing: border-box;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
-
     --paper: #f4f1ea;
     --paper-2: #ebe6dc;
     --paper-3: #fbf9f4;
@@ -10,7 +9,6 @@
     --muted: #716f66;
     --line: rgba(23, 25, 22, .12);
     --line-strong: rgba(23, 25, 22, .22);
-
     --done: #47716d;
     --done-soft: rgba(71, 113, 109, .14);
     --active: #2d6a49;
@@ -20,16 +18,13 @@
     --attn: #875c3b;
     --attn-soft: rgba(135, 92, 59, .14);
     --danger: #9d423a;
-
     --shadow: 0 18px 60px rgba(32, 30, 22, .10);
     --shadow-sm: 0 8px 24px rgba(32, 30, 22, .08);
     --radius: 18px;
     --radius-sm: 12px;
     --radius-lg: 26px;
-
     --sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
     --mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-
     --band-bg: #171916;
     --band-text: #f4f1ea;
     --band-muted: rgba(244, 241, 234, .62);
@@ -37,7 +32,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+     :root:not([data-theme="light"]) {
         --paper: #15140f;
         --paper-2: #1d1b15;
         --paper-3: #221f18;
@@ -100,6 +95,14 @@ body {
     -webkit-font-smoothing: antialiased;
     font-size: 16px;
     line-height: 1.5;
+}
+
+.brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    border-radius: inherit;
 }
 
 h1,
@@ -312,7 +315,9 @@ em {
     background: var(--future);
 }
 
+
 /* ---------- reveal / motion plumbing ---------- */
+
 .reveal {
     opacity: 1;
     transform: none;
@@ -418,7 +423,6 @@ em {
     from {
         transform: scaleX(0);
     }
-
     to {
         transform: scaleX(1);
     }
@@ -429,7 +433,6 @@ em {
         opacity: 0;
         transform: translateY(-6px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -437,55 +440,46 @@ em {
 }
 
 @keyframes markerBounce {
-
     0%,
     100% {
         transform: translateY(0);
     }
-
     50% {
         transform: translateY(4px);
     }
 }
 
 @keyframes blinkCursor {
-
     0%,
     100% {
         opacity: 1;
     }
-
     50% {
         opacity: 0;
     }
 }
 
 @keyframes floatBlob {
-
     0%,
     100% {
         transform: translate(0, 0) scale(1);
     }
-
     50% {
         transform: translate(-16px, 14px) scale(1.06);
     }
 }
 
 @keyframes pulseDot {
-
     0%,
     100% {
         box-shadow: 0 0 0 0 var(--active-soft);
     }
-
     50% {
         box-shadow: 0 0 0 8px transparent;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-
     *,
     *::before,
     *::after {
@@ -494,19 +488,19 @@ em {
         transition-duration: .01ms !important;
         scroll-behavior: auto !important;
     }
-
     .js-ready .reveal,
     .js-ready .stagger>* {
         opacity: 1 !important;
         transform: none !important;
     }
-
     .js-ready .connector {
         stroke-dashoffset: 0 !important;
     }
 }
 
+
 /* ---------- hero ---------- */
+
 .hero {
     position: relative;
     padding: 64px 0 40px;
@@ -582,7 +576,9 @@ em {
     font-weight: 600;
 }
 
+
 /* progress chart */
+
 .progress-chart {
     position: relative;
     z-index: 1;
@@ -712,7 +708,9 @@ em {
     margin: 6px 0;
 }
 
+
 /* ---------- sections generic ---------- */
+
 .section {
     padding: 96px 0;
     border-top: 1px solid var(--line);
@@ -761,7 +759,9 @@ em {
     font-weight: 500;
 }
 
+
 /* checklist cards */
+
 .card-grid {
     margin-top: 36px;
     display: grid;
@@ -835,7 +835,9 @@ em {
     margin-top: 0;
 }
 
+
 /* diagrams */
+
 .diagram-wrap {
     margin-top: 40px;
     overflow-x: auto;
@@ -894,7 +896,9 @@ em {
     fill: var(--muted);
 }
 
+
 /* widgets (feature 3 previews) */
+
 .feature-grid {
     margin-top: 46px;
     display: grid;
@@ -1349,7 +1353,9 @@ em {
     font-size: 14px;
 }
 
+
 /* vision band */
+
 .band-vision {
     background: var(--band-bg);
     color: var(--band-text);
@@ -1484,7 +1490,9 @@ em {
     color: var(--band-muted);
 }
 
+
 /* footer */
+
 .footer {
     padding: 52px 0 calc(52px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--line);
