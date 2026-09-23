@@ -209,10 +209,23 @@ async function submitAuth(event) {
 async function continueWithGoogle() {
   refs.authError.hidden = true;
   refs.googleButton.disabled = true;
+
   try {
-    const payload = await api('/api/auth/sign-in/social', { method: 'POST', body: JSON.stringify({ provider: 'google', callbackURL: window.location.origin + '/' }) });
+    const payload = await api('/api/auth/sign-in/social', {
+      method: 'POST',
+      body: JSON.stringify({
+        provider: 'google',
+        callbackURL: window.location.origin + '/',
+        requestSignUp: state.authMode === 'signup'
+      })
+    });
+
     const redirectURL = payload?.url || payload?.data?.url;
-    if (!redirectURL) throw new Error('Google authentication is not enabled in Neon Auth yet.');
+
+    if (!redirectURL) {
+      throw new Error('Google authentication is not available.');
+    }
+
     window.location.assign(redirectURL);
   } catch (error) {
     showAuthError(error.message);
@@ -220,7 +233,6 @@ async function continueWithGoogle() {
     refs.googleButton.disabled = false;
   }
 }
-
 async function loadProjects() {
   try {
     const payload = await api('/api/projects');
