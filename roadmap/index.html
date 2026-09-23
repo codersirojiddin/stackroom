@@ -1,138 +1,152 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#f4f1ea" />
-<meta name="theme-color" content="#15140f" media="(prefers-color-scheme: dark)" />
-<meta name="description" content="Stackroom's build log — a private workspace for every project, domain, deployment and database, tracked phase by phase." />
-<title>Stackroom — Roadmap</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f1ea" />
+    <meta name="theme-color" content="#15140f" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Stackroom's build log — a private workspace for every project, domain, deployment and database, tracked phase by phase." />
+    <title>Stackroom — Roadmap</title>
+    <link rel="icon" href="/assets/stackroom-logo.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="scroll-rail"><div class="scroll-fill" id="scrollFill"></div></div>
-
-  <nav class="side-nav" aria-label="Section navigation">
-    <a href="#hero" data-label="Top" class="active"></a>
-    <a href="#foundation" data-label="01 – 02 Foundation"></a>
-    <a href="#current" data-label="03 Active now"></a>
-    <a href="#next" data-label="04 Planned next"></a>
-    <a href="#horizon" data-label="05 The long game"></a>
-    <a href="#vision" data-label="The vision"></a>
-  </nav>
-
-  <header class="hero" id="hero">
-    <div class="hero-blob b1" aria-hidden="true"></div>
-    <div class="hero-blob b2" aria-hidden="true"></div>
-    <div class="wrap hero-inner">
-      <div class="brand-lockup">
-        <div class="brand-mark">S</div>
-        <div>
-          <p class="brand-name">stackroom</p>
-          <p class="brand-caption">roadmap</p>
-        </div>
-      </div>
-      <p class="eyebrow"><span class="eyebrow-dot"></span>Where things stand</p>
-      <h1>My projects were everywhere.<br><em>So I built somewhere for them.</em></h1>
-      <p class="hero-copy">Stackroom is a private workspace for every domain, deployment, database and small detail behind everything I ship — one place instead of a dozen scattered tabs. This page tracks how it's actually being built, phase by phase.</p>
-      <div class="hero-meta">
-        <span class="status-pill active"><i></i>v3.0.1 · stabilizing phase 03</span>
-        <span class="hero-stat"><strong>2</strong> of 5 phases shipped</span>
-      </div>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="scroll-rail">
+        <div class="scroll-fill" id="scrollFill"></div>
     </div>
 
-    <div class="wrap">
-      <div class="progress-chart">
-        <div class="chart-title"><span>Build progress</span><span>5 phases</span></div>
+    <nav class="side-nav" aria-label="Section navigation">
+        <a href="#hero" data-label="Top" class="active"></a>
+        <a href="#foundation" data-label="01 – 02 Foundation"></a>
+        <a href="#current" data-label="03 Active now"></a>
+        <a href="#next" data-label="04 Planned next"></a>
+        <a href="#horizon" data-label="05 The long game"></a>
+        <a href="#vision" data-label="The vision"></a>
+    </nav>
 
-        <div class="chart-row">
-          <div class="chart-row-top">
-            <span class="chart-num">01</span><span class="chart-label">Foundation</span>
-            <span class="chart-state s-done">Shipped</span>
-            <span class="chart-pct">100%</span>
-          </div>
-          <div class="chart-track"><span class="chart-fill f-done" style="width:100%;animation-delay:0ms"></span></div>
+    <header class="hero" id="hero">
+        <div class="hero-blob b1" aria-hidden="true"></div>
+        <div class="hero-blob b2" aria-hidden="true"></div>
+        <div class="wrap hero-inner">
+            <div class="brand-lockup">
+                <div class="brand-mark">S</div>
+                <div>
+                    <p class="brand-name">stackroom</p>
+                    <p class="brand-caption">roadmap</p>
+                </div>
+            </div>
+            <p class="eyebrow"><span class="eyebrow-dot"></span>Where things stand</p>
+            <h1>My projects were everywhere.<br><em>So I built somewhere for them.</em></h1>
+            <p class="hero-copy">Stackroom is a private workspace for every domain, deployment, database and small detail behind everything I ship — one place instead of a dozen scattered tabs. This page tracks how it's actually being built, phase by phase.</p>
+            <div class="hero-meta">
+                <span class="status-pill active"><i></i>v3.0.1 · stabilizing phase 03</span>
+                <span class="hero-stat"><strong>2</strong> of 5 phases shipped</span>
+            </div>
         </div>
 
-        <div class="chart-row">
-          <div class="chart-row-top">
-            <span class="chart-num">02</span><span class="chart-label">Project management</span>
-            <span class="chart-state s-done">Shipped</span>
-            <span class="chart-pct">100%</span>
-          </div>
-          <div class="chart-track"><span class="chart-fill f-done" style="width:100%;animation-delay:130ms"></span></div>
-        </div>
+        <div class="wrap">
+            <div class="progress-chart">
+                <div class="chart-title"><span>Build progress</span><span>5 phases</span></div>
 
-        <div class="chart-row is-current">
-          <div class="chart-row-top">
-            <span class="chart-num">03</span><span class="chart-label">Intelligence &amp; organization</span>
-            <span class="chart-state s-active">Active</span>
-            <span class="chart-pct">~80%</span>
-          </div>
-          <div class="chart-track"><span class="chart-fill f-active" style="width:80%;animation-delay:260ms"></span></div>
-        </div>
-        <p class="chart-here">↑ you are here</p>
+                <div class="chart-row">
+                    <div class="chart-row-top">
+                        <span class="chart-num">01</span><span class="chart-label">Foundation</span>
+                        <span class="chart-state s-done">Shipped</span>
+                        <span class="chart-pct">100%</span>
+                    </div>
+                    <div class="chart-track"><span class="chart-fill f-done" style="width:100%;animation-delay:0ms"></span></div>
+                </div>
 
-        <div class="chart-row">
-          <div class="chart-row-top">
-            <span class="chart-num">04</span><span class="chart-label">Developer workflow</span>
-            <span class="chart-state s-future">Planned</span>
-            <span class="chart-pct">0%</span>
-          </div>
-          <div class="chart-track"><span class="chart-fill" style="width:0%"></span></div>
-        </div>
+                <div class="chart-row">
+                    <div class="chart-row-top">
+                        <span class="chart-num">02</span><span class="chart-label">Project management</span>
+                        <span class="chart-state s-done">Shipped</span>
+                        <span class="chart-pct">100%</span>
+                    </div>
+                    <div class="chart-track"><span class="chart-fill f-done" style="width:100%;animation-delay:130ms"></span></div>
+                </div>
 
-        <div class="chart-row">
-          <div class="chart-row-top">
-            <span class="chart-num">05</span><span class="chart-label">Infrastructure intelligence</span>
-            <span class="chart-state s-future">Planned</span>
-            <span class="chart-pct">0%</span>
-          </div>
-          <div class="chart-track"><span class="chart-fill" style="width:0%"></span></div>
-        </div>
-      </div>
-    </div>
-  </header>
+                <div class="chart-row is-current">
+                    <div class="chart-row-top">
+                        <span class="chart-num">03</span><span class="chart-label">Intelligence &amp; organization</span>
+                        <span class="chart-state s-active">Active</span>
+                        <span class="chart-pct">~80%</span>
+                    </div>
+                    <div class="chart-track"><span class="chart-fill f-active" style="width:80%;animation-delay:260ms"></span></div>
+                </div>
+                <p class="chart-here">↑ you are here</p>
 
-  <main>
-    <!-- FOUNDATION (01 + 02) -->
-    <section class="section" id="foundation">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--done);box-shadow:0 0 0 4px var(--done-soft)"></span>Phase 01–02 · Shipped</p>
-          <h2>The first two phases gave every project a real home.</h2>
-          <p class="section-intro">Before this, a project's details lived wherever I'd last left them — a registrar tab, a note to myself, a half-remembered <code>.env</code> file. Phases one and two fixed that: a place to create a project, and a shape rich enough to hold everything that belongs to it.</p>
-        </div>
+                <div class="chart-row">
+                    <div class="chart-row-top">
+                        <span class="chart-num">04</span><span class="chart-label">Developer workflow</span>
+                        <span class="chart-state s-future">Planned</span>
+                        <span class="chart-pct">0%</span>
+                    </div>
+                    <div class="chart-track"><span class="chart-fill" style="width:0%"></span></div>
+                </div>
 
-        <div class="card-grid reveal">
-          <div class="phase-card">
-            <div class="phase-card-head"><h3>01 · Foundation</h3><span class="chart-state s-done">Done</span></div>
-            <ul class="check-list">
-              <li>Go backend, Neon PostgreSQL</li>
-              <li>Neon Auth, user authentication</li>
-              <li>Project creation &amp; deletion</li>
-              <li>Ownership &amp; security checks</li>
-              <li>Basic dashboard</li>
-              <li>Search &amp; filter, grid/list view</li>
-            </ul>
-          </div>
-          <div class="phase-card">
-            <div class="phase-card-head"><h3>02 · Project management</h3><span class="chart-state s-done">Done</span></div>
-            <p class="check-group-label">Record</p>
-            <ul class="check-list"><li>Name, description, status, priority, category, notes</li></ul>
-            <p class="check-group-label">Infrastructure</p>
-            <ul class="check-list"><li>Domains, deployments, databases, technologies, links</li></ul>
-            <p class="check-group-label">Interface</p>
-            <ul class="check-list"><li>Detail page, edit &amp; delete, loading/error states, toasts, responsive layout</li></ul>
-          </div>
+                <div class="chart-row">
+                    <div class="chart-row-top">
+                        <span class="chart-num">05</span><span class="chart-label">Infrastructure intelligence</span>
+                        <span class="chart-state s-future">Planned</span>
+                        <span class="chart-pct">0%</span>
+                    </div>
+                    <div class="chart-track"><span class="chart-fill" style="width:0%"></span></div>
+                </div>
+            </div>
         </div>
+    </header>
 
-        <div class="diagram-wrap reveal">
-          <svg class="diagram tone-done" viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="User connects to Projects, which connects to Domains, Deployments, Databases, Technologies and Links">
+    <main>
+        <!-- FOUNDATION (01 + 02) -->
+        <section class="section" id="foundation">
+            <div class="wrap">
+                <div class="section-head reveal">
+                    <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--done);box-shadow:0 0 0 4px var(--done-soft)"></span>Phase 01–02 · Shipped</p>
+                    <h2>The first two phases gave every project a real home.</h2>
+                    <p class="section-intro">Before this, a project's details lived wherever I'd last left them — a registrar tab, a note to myself, a half-remembered <code>.env</code> file. Phases one and two fixed that: a place to create a project, and a shape rich enough to
+                        hold everything that belongs to it.</p>
+                </div>
+
+                <div class="card-grid reveal">
+                    <div class="phase-card">
+                        <div class="phase-card-head">
+                            <h3>01 · Foundation</h3><span class="chart-state s-done">Done</span></div>
+                        <ul class="check-list">
+                            <li>Go backend, Neon PostgreSQL</li>
+                            <li>Neon Auth, user authentication</li>
+                            <li>Project creation &amp; deletion</li>
+                            <li>Ownership &amp; security checks</li>
+                            <li>Basic dashboard</li>
+                            <li>Search &amp; filter, grid/list view</li>
+                        </ul>
+                    </div>
+                    <div class="phase-card">
+                        <div class="phase-card-head">
+                            <h3>02 · Project management</h3><span class="chart-state s-done">Done</span></div>
+                        <p class="check-group-label">Record</p>
+                        <ul class="check-list">
+                            <li>Name, description, status, priority, category, notes</li>
+                        </ul>
+                        <p class="check-group-label">Infrastructure</p>
+                        <ul class="check-list">
+                            <li>Domains, deployments, databases, technologies, links</li>
+                        </ul>
+                        <p class="check-group-label">Interface</p>
+                        <ul class="check-list">
+                            <li>Detail page, edit &amp; delete, loading/error states, toasts, responsive layout</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="diagram-wrap reveal">
+                    <svg class="diagram tone-done" viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="User connects to Projects, which connects to Domains, Deployments, Databases, Technologies and Links">
             <path class="connector" d="M380,58 L380,90" />
             <path class="connector" d="M380,126 L90,166" />
             <path class="connector" d="M380,126 L235,166" />
@@ -149,127 +163,141 @@
             <g class="diagram-node"><rect x="469" y="166" width="112" height="34" rx="9"/><text x="525" y="188" font-size="11" text-anchor="middle">technologies</text></g>
             <g class="diagram-node"><rect x="614" y="166" width="112" height="34" rx="9"/><text x="670" y="188" font-size="11" text-anchor="middle">links</text></g>
           </svg>
-        </div>
-      </div>
-    </section>
-
-    <!-- PHASE 03 CURRENT -->
-    <section class="section band-current" id="current">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <p class="eyebrow"><span class="eyebrow-dot"></span>Phase 03 · Active now</p>
-          <h2>Turning stored data into something worth checking.</h2>
-          <p class="section-intro">This phase is the gap between having the data and understanding it — what needs attention, what's missing, where everything actually lives. It's roughly 80% done; what's left is bug-fixing and polish on top of what's already shipped.</p>
-          <p class="note-row"><b>✓ resolved</b>&nbsp;an <code>expires_at</code> Postgres error found mid-phase — that fix is what shipped as v3.0.1.</p>
-        </div>
-
-        <div class="feature-grid">
-          <div class="widget reveal">
-            <div class="widget-label"><span>Dashboard 2.0</span><span>overview</span></div>
-            <div class="stat-row">
-              <div class="stat-box"><strong data-count-to="12">0</strong><span>Projects</span></div>
-              <div class="stat-box"><strong data-count-to="7">0</strong><span>Domains</span></div>
-              <div class="stat-box"><strong data-count-to="3">0</strong><span>Attention</span></div>
+                </div>
             </div>
-            <div class="attn-row"><span>DevSalary</span><span>75% complete →</span></div>
-          </div>
+        </section>
 
-          <div class="widget reveal">
-            <div class="widget-label"><span>Project health</span><span>completeness</span></div>
-            <div class="health-hero">
-              <div class="health-hero-top"><span>Healthy</span><strong><span data-count-to="75">0</span>%</strong></div>
-              <div class="health-track"><i data-fill-to="75%"></i></div>
+        <!-- PHASE 03 CURRENT -->
+        <section class="section band-current" id="current">
+            <div class="wrap">
+                <div class="section-head reveal">
+                    <p class="eyebrow"><span class="eyebrow-dot"></span>Phase 03 · Active now</p>
+                    <h2>Turning stored data into something worth checking.</h2>
+                    <p class="section-intro">This phase is the gap between having the data and understanding it — what needs attention, what's missing, where everything actually lives. It's roughly 80% done; what's left is bug-fixing and polish on top of what's already shipped.</p>
+                    <p class="note-row"><b>✓ resolved</b>&nbsp;an <code>expires_at</code> Postgres error found mid-phase — that fix is what shipped as v3.0.1.</p>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="widget reveal">
+                        <div class="widget-label"><span>Dashboard 2.0</span><span>overview</span></div>
+                        <div class="stat-row">
+                            <div class="stat-box"><strong data-count-to="12">0</strong><span>Projects</span></div>
+                            <div class="stat-box"><strong data-count-to="7">0</strong><span>Domains</span></div>
+                            <div class="stat-box"><strong data-count-to="3">0</strong><span>Attention</span></div>
+                        </div>
+                        <div class="attn-row"><span>DevSalary</span><span>75% complete →</span></div>
+                    </div>
+
+                    <div class="widget reveal">
+                        <div class="widget-label"><span>Project health</span><span>completeness</span></div>
+                        <div class="health-hero">
+                            <div class="health-hero-top"><span>Healthy</span><strong><span data-count-to="75">0</span>%</strong></div>
+                            <div class="health-track"><i data-fill-to="75%"></i></div>
+                        </div>
+                        <div class="health-checks">
+                            <div class="health-check ok"><span>✓</span>Description</div>
+                            <div class="health-check ok"><span>✓</span>Category</div>
+                            <div class="health-check ok"><span>✓</span>Technology</div>
+                            <div class="health-check ok"><span>✓</span>Domains</div>
+                            <div class="health-check ok"><span>✓</span>Deployments</div>
+                            <div class="health-check ok"><span>✓</span>Databases</div>
+                            <div class="health-check"><span>·</span>Links</div>
+                            <div class="health-check"><span>·</span>Notes</div>
+                        </div>
+                    </div>
+
+                    <div class="widget reveal">
+                        <div class="widget-label"><span>Domain management</span><span>registry</span></div>
+                        <div class="resource-card">
+                            <div><strong>devsalary.com</strong>
+                                <p>Namecheap · Cloudflare DNS</p>
+                            </div>
+                            <div class="resource-meta"><span>Expires 2027‑04‑18</span></div>
+                        </div>
+                    </div>
+
+                    <div class="widget reveal">
+                        <div class="widget-label"><span>Deployment environments</span><span>per project</span></div>
+                        <div class="chip-row">
+                            <span class="env-chip prod"><i></i>Production</span>
+                            <span class="env-chip stage"><i></i>Staging</span>
+                            <span class="env-chip dev"><i></i>Development</span>
+                        </div>
+                    </div>
+
+                    <div class="widget reveal">
+                        <div class="widget-label"><span>Activity timeline</span><span>latest first</span></div>
+                        <div class="activity-list stagger">
+                            <div class="activity-item"><span class="activity-dot"></span>
+                                <div><strong>Added deployment</strong>
+                                    <p>Production environment linked</p>
+                                </div><time>Sep 21</time></div>
+                            <div class="activity-item"><span class="activity-dot"></span>
+                                <div><strong>Added domain</strong>
+                                    <p>Registrar &amp; DNS recorded</p>
+                                </div><time>Sep 20</time></div>
+                            <div class="activity-item"><span class="activity-dot"></span>
+                                <div><strong>Updated database</strong>
+                                    <p>Connection details refreshed</p>
+                                </div><time>Sep 18</time></div>
+                            <div class="activity-item"><span class="activity-dot"></span>
+                                <div><strong>Project created</strong>
+                                    <p>First record added</p>
+                                </div><time>Sep 17</time></div>
+                        </div>
+                    </div>
+
+                    <div class="widget reveal">
+                        <div class="widget-label"><span>Global search</span><span>⌘ /</span></div>
+                        <div class="search-mock">
+                            <div class="search-field"><span>⌕</span><span id="searchTyped"></span><span class="cmd-cursor"></span></div>
+                            <div class="search-results">
+                                <div class="search-row"><span>DevSalary</span><span>matched via Neon Postgres</span></div>
+                                <div class="search-row"><span>Stackroom</span><span>matched via Neon Auth</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widget full reveal">
+                        <div class="widget-label"><span>Command palette</span><span>anywhere in the app</span></div>
+                        <div class="cmd-palette">
+                            <div class="cmd-top"><span>Command</span><kbd>Esc</kbd></div>
+                            <div class="cmd-search"><span>⌕</span><span>Search actions…</span></div>
+                            <div class="cmd-list stagger">
+                                <div class="cmd-item"><span class="cmd-icon">◫</span><span><strong>New project</strong><small>Create a workspace record</small></span><kbd>1</kbd></div>
+                                <div class="cmd-item"><span class="cmd-icon">⌕</span><span><strong>Search projects</strong><small>Jump to anything, instantly</small></span><kbd>2</kbd></div>
+                                <div class="cmd-item"><span class="cmd-icon">@</span><span><strong>Domains</strong><small>View the domain registry</small></span><kbd>3</kbd></div>
+                                <div class="cmd-item"><span class="cmd-icon">!</span><span><strong>Attention</strong><small>See what needs a look</small></span><kbd>4</kbd></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widget full reveal">
+                        <div class="widget-label"><span>UI polish</span><span>throughout</span></div>
+                        <div class="tag-row">
+                            <span class="tag">Loading states</span>
+                            <span class="tag">Empty states</span>
+                            <span class="tag">Toast notifications</span>
+                            <span class="tag">Responsive layout</span>
+                            <span class="tag">Consistent design system</span>
+                            <span class="tag">Better navigation</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="health-checks">
-              <div class="health-check ok"><span>✓</span>Description</div>
-              <div class="health-check ok"><span>✓</span>Category</div>
-              <div class="health-check ok"><span>✓</span>Technology</div>
-              <div class="health-check ok"><span>✓</span>Domains</div>
-              <div class="health-check ok"><span>✓</span>Deployments</div>
-              <div class="health-check ok"><span>✓</span>Databases</div>
-              <div class="health-check"><span>·</span>Links</div>
-              <div class="health-check"><span>·</span>Notes</div>
-            </div>
-          </div>
+        </section>
 
-          <div class="widget reveal">
-            <div class="widget-label"><span>Domain management</span><span>registry</span></div>
-            <div class="resource-card">
-              <div><strong>devsalary.com</strong><p>Namecheap · Cloudflare DNS</p></div>
-              <div class="resource-meta"><span>Expires 2027‑04‑18</span></div>
-            </div>
-          </div>
+        <!-- PHASE 04 -->
+        <section class="section" id="next">
+            <div class="wrap">
+                <div class="section-head reveal">
+                    <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--future);box-shadow:0 0 0 4px var(--future-soft)"></span>Phase 04 · Planned next</p>
+                    <h2>Connecting Stackroom to where the code actually lives.</h2>
+                    <p class="section-intro">Once phase three is stable, the next jump is GitHub — pulling real repository activity into each project, and giving it an actual workflow state instead of just a status field.</p>
+                </div>
 
-          <div class="widget reveal">
-            <div class="widget-label"><span>Deployment environments</span><span>per project</span></div>
-            <div class="chip-row">
-              <span class="env-chip prod"><i></i>Production</span>
-              <span class="env-chip stage"><i></i>Staging</span>
-              <span class="env-chip dev"><i></i>Development</span>
-            </div>
-          </div>
-
-          <div class="widget reveal">
-            <div class="widget-label"><span>Activity timeline</span><span>latest first</span></div>
-            <div class="activity-list stagger">
-              <div class="activity-item"><span class="activity-dot"></span><div><strong>Added deployment</strong><p>Production environment linked</p></div><time>Sep 21</time></div>
-              <div class="activity-item"><span class="activity-dot"></span><div><strong>Added domain</strong><p>Registrar &amp; DNS recorded</p></div><time>Sep 20</time></div>
-              <div class="activity-item"><span class="activity-dot"></span><div><strong>Updated database</strong><p>Connection details refreshed</p></div><time>Sep 18</time></div>
-              <div class="activity-item"><span class="activity-dot"></span><div><strong>Project created</strong><p>First record added</p></div><time>Sep 17</time></div>
-            </div>
-          </div>
-
-          <div class="widget reveal">
-            <div class="widget-label"><span>Global search</span><span>⌘ /</span></div>
-            <div class="search-mock">
-              <div class="search-field"><span>⌕</span><span id="searchTyped"></span><span class="cmd-cursor"></span></div>
-              <div class="search-results">
-                <div class="search-row"><span>DevSalary</span><span>matched via Neon Postgres</span></div>
-                <div class="search-row"><span>Stackroom</span><span>matched via Neon Auth</span></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="widget full reveal">
-            <div class="widget-label"><span>Command palette</span><span>anywhere in the app</span></div>
-            <div class="cmd-palette">
-              <div class="cmd-top"><span>Command</span><kbd>Esc</kbd></div>
-              <div class="cmd-search"><span>⌕</span><span>Search actions…</span></div>
-              <div class="cmd-list stagger">
-                <div class="cmd-item"><span class="cmd-icon">◫</span><span><strong>New project</strong><small>Create a workspace record</small></span><kbd>1</kbd></div>
-                <div class="cmd-item"><span class="cmd-icon">⌕</span><span><strong>Search projects</strong><small>Jump to anything, instantly</small></span><kbd>2</kbd></div>
-                <div class="cmd-item"><span class="cmd-icon">@</span><span><strong>Domains</strong><small>View the domain registry</small></span><kbd>3</kbd></div>
-                <div class="cmd-item"><span class="cmd-icon">!</span><span><strong>Attention</strong><small>See what needs a look</small></span><kbd>4</kbd></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="widget full reveal">
-            <div class="widget-label"><span>UI polish</span><span>throughout</span></div>
-            <div class="tag-row">
-              <span class="tag">Loading states</span>
-              <span class="tag">Empty states</span>
-              <span class="tag">Toast notifications</span>
-              <span class="tag">Responsive layout</span>
-              <span class="tag">Consistent design system</span>
-              <span class="tag">Better navigation</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- PHASE 04 -->
-    <section class="section" id="next">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--future);box-shadow:0 0 0 4px var(--future-soft)"></span>Phase 04 · Planned next</p>
-          <h2>Connecting Stackroom to where the code actually lives.</h2>
-          <p class="section-intro">Once phase three is stable, the next jump is GitHub — pulling real repository activity into each project, and giving it an actual workflow state instead of just a status field.</p>
-        </div>
-
-        <div class="diagram-wrap reveal">
-          <svg class="diagram tone-future" viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Repository connects to Branch, Commits, Releases and Pull requests">
+                <div class="diagram-wrap reveal">
+                    <svg class="diagram tone-future" viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Repository connects to Branch, Commits, Releases and Pull requests">
             <path class="connector" d="M320,58 L96,132" />
             <path class="connector" d="M320,58 L256,132" />
             <path class="connector" d="M320,58 L384,132" />
@@ -280,33 +308,33 @@
             <g class="diagram-node"><rect x="328" y="132" width="112" height="32" rx="9"/><text x="384" y="153" font-size="11" text-anchor="middle">releases</text></g>
             <g class="diagram-node"><rect x="488" y="132" width="112" height="32" rx="9"/><text x="544" y="153" font-size="10.5" text-anchor="middle">pull requests</text></g>
           </svg>
-        </div>
+                </div>
 
-        <p class="check-group-label reveal" style="margin-top:44px">Project workflow</p>
-        <div class="workflow-stepper reveal">
-          <span class="wf-step">Idea</span><span class="wf-arrow">→</span>
-          <span class="wf-step">Planning</span><span class="wf-arrow">→</span>
-          <span class="wf-step">Building</span><span class="wf-arrow">→</span>
-          <span class="wf-step">Live</span><span class="wf-arrow">→</span>
-          <span class="wf-step">Maintaining</span><span class="wf-arrow">→</span>
-          <span class="wf-step">Archived</span>
-        </div>
+                <p class="check-group-label reveal" style="margin-top:44px">Project workflow</p>
+                <div class="workflow-stepper reveal">
+                    <span class="wf-step">Idea</span><span class="wf-arrow">→</span>
+                    <span class="wf-step">Planning</span><span class="wf-arrow">→</span>
+                    <span class="wf-step">Building</span><span class="wf-arrow">→</span>
+                    <span class="wf-step">Live</span><span class="wf-arrow">→</span>
+                    <span class="wf-step">Maintaining</span><span class="wf-arrow">→</span>
+                    <span class="wf-step">Archived</span>
+                </div>
 
-        <p class="section-intro reveal" style="margin-top:34px">Command palette 2.0 adds actions like <em>Open GitHub</em>, <em>Change project status</em> and <em>Search Neon projects</em> — still planned, not built.</p>
-      </div>
-    </section>
+                <p class="section-intro reveal" style="margin-top:34px">Command palette 2.0 adds actions like <em>Open GitHub</em>, <em>Change project status</em> and <em>Search Neon projects</em> — still planned, not built.</p>
+            </div>
+        </section>
 
-    <!-- PHASE 05 -->
-    <section class="section" id="horizon">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--future);box-shadow:0 0 0 4px var(--future-soft)"></span>Phase 05 · The long game</p>
-          <h2>Watching the whole stack, not just the record of it.</h2>
-          <p class="section-intro">This is where Stackroom stops being a list and starts being a lookout — checking on the actual infrastructure behind every project instead of waiting for me to notice something's wrong.</p>
-        </div>
+        <!-- PHASE 05 -->
+        <section class="section" id="horizon">
+            <div class="wrap">
+                <div class="section-head reveal">
+                    <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--future);box-shadow:0 0 0 4px var(--future-soft)"></span>Phase 05 · The long game</p>
+                    <h2>Watching the whole stack, not just the record of it.</h2>
+                    <p class="section-intro">This is where Stackroom stops being a list and starts being a lookout — checking on the actual infrastructure behind every project instead of waiting for me to notice something's wrong.</p>
+                </div>
 
-        <div class="diagram-wrap reveal">
-          <svg class="diagram tone-future" id="infraDiagram" viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A tracked project connects to Cloudflare, Vercel and Neon, which all report back to Stackroom">
+                <div class="diagram-wrap reveal">
+                    <svg class="diagram tone-future" id="infraDiagram" viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A tracked project connects to Cloudflare, Vercel and Neon, which all report back to Stackroom">
             <path class="connector" d="M320,58 L110,110" />
             <path class="connector" d="M320,58 L320,110" />
             <path class="connector" d="M320,58 L530,110" />
@@ -321,53 +349,69 @@
             <g class="diagram-node"><rect x="474" y="110" width="112" height="34" rx="9"/><text x="530" y="128" font-size="10.5" text-anchor="middle">neon</text><text class="sub" x="530" y="140" font-size="9" text-anchor="middle">database</text></g>
             <g class="diagram-node emph"><rect x="256" y="206" width="128" height="34" rx="10"/><text x="320" y="228" font-size="12" text-anchor="middle" font-weight="600">stackroom</text></g>
           </svg>
-        </div>
+                </div>
 
-        <div class="tag-row reveal" style="margin-top:36px">
-          <span class="tag">SSL monitoring</span>
-          <span class="tag">Domain expiration alerts</span>
-          <span class="tag">Deployment health</span>
-          <span class="tag">DNS information</span>
-          <span class="tag">GitHub integration</span>
-          <span class="tag">Infrastructure status</span>
-          <span class="tag">Notifications</span>
-          <span class="tag">Inactivity detection</span>
-          <span class="tag">External integrations</span>
-        </div>
-      </div>
-    </section>
+                <div class="tag-row reveal" style="margin-top:36px">
+                    <span class="tag">SSL monitoring</span>
+                    <span class="tag">Domain expiration alerts</span>
+                    <span class="tag">Deployment health</span>
+                    <span class="tag">DNS information</span>
+                    <span class="tag">GitHub integration</span>
+                    <span class="tag">Infrastructure status</span>
+                    <span class="tag">Notifications</span>
+                    <span class="tag">Inactivity detection</span>
+                    <span class="tag">External integrations</span>
+                </div>
+            </div>
+        </section>
 
-    <!-- VISION -->
-    <section class="section band-vision" id="vision">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <p class="eyebrow"><span class="eyebrow-dot"></span>The shape of it</p>
-          <h2>One problem, five phases.</h2>
-          <blockquote class="origin-quote">It started with one sentence: my projects are everywhere, and I don't remember where everything is.</blockquote>
-        </div>
+        <!-- VISION -->
+        <section class="section band-vision" id="vision">
+            <div class="wrap">
+                <div class="section-head reveal">
+                    <p class="eyebrow"><span class="eyebrow-dot"></span>The shape of it</p>
+                    <h2>One problem, five phases.</h2>
+                    <blockquote class="origin-quote">It started with one sentence: my projects are everywhere, and I don't remember where everything is.</blockquote>
+                </div>
 
-        <div class="journey reveal stagger">
-          <div class="journey-step j-done"><span class="journey-dot"></span><p class="journey-tag">V1</p><p>Store my projects.</p></div>
-          <div class="journey-step j-done"><span class="journey-dot"></span><p class="journey-tag">V2</p><p>Store everything belonging to each project.</p></div>
-          <div class="journey-step j-active"><span class="journey-dot"></span><p class="journey-tag">V3 — now</p><p>Understand what needs my attention.</p></div>
-          <div class="journey-step j-future"><span class="journey-dot"></span><p class="journey-tag">V4</p><p>Connect my development workflow.</p></div>
-          <div class="journey-step j-future"><span class="journey-dot"></span><p class="journey-tag">V5</p><p>Understand and monitor my entire infrastructure.</p></div>
-        </div>
-      </div>
-    </section>
-  </main>
+                <div class="journey reveal stagger">
+                    <div class="journey-step j-done"><span class="journey-dot"></span>
+                        <p class="journey-tag">V1</p>
+                        <p>Store my projects.</p>
+                    </div>
+                    <div class="journey-step j-done"><span class="journey-dot"></span>
+                        <p class="journey-tag">V2</p>
+                        <p>Store everything belonging to each project.</p>
+                    </div>
+                    <div class="journey-step j-active"><span class="journey-dot"></span>
+                        <p class="journey-tag">V3 — now</p>
+                        <p>Understand what needs my attention.</p>
+                    </div>
+                    <div class="journey-step j-future"><span class="journey-dot"></span>
+                        <p class="journey-tag">V4</p>
+                        <p>Connect my development workflow.</p>
+                    </div>
+                    <div class="journey-step j-future"><span class="journey-dot"></span>
+                        <p class="journey-tag">V5</p>
+                        <p>Understand and monitor my entire infrastructure.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 
-  <footer class="footer">
-    <div class="wrap footer-inner">
-      <div class="brand-lockup">
-        <div class="brand-mark" style="width:30px;height:30px;font-size:13px;border-radius:9px;">S</div>
-        <p class="brand-name" style="font-size:14px;">stackroom</p>
-      </div>
-      <p class="footer-focus">Right now: <b>finish &amp; stabilize phase 03</b>, then GitHub and the developer workflow. Built solo · 100% English.</p>
-    </div>
-  </footer>
+    <footer class="footer">
+        <div class="wrap footer-inner">
+            <div class="brand-lockup">
+                <div class="brand-mark" style="width:30px;height:30px;font-size:13px;border-radius:9px;">S</div>
+                <p class="brand-name" style="font-size:14px;">stackroom</p>
+            </div>
+            <p class="footer-focus">Right now: <b>finish &amp; stabilize phase 03</b>, then GitHub and the developer workflow. Built solo · 100% English.</p>
+        </div>
+    </footer>
 
     <script src="script.js"></script>
 
 </body>
+
 </html>
