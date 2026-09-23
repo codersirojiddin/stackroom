@@ -35,16 +35,6 @@ go run .
 
 Open `http://localhost:8080`.
 
-### Environment
-
-```text
-DATABASE_URL=...
-NEON_AUTH_BASE_URL=...
-PORT=8080
-```
-
-Never commit `.env`.
-
 ## Architecture
 
 ```text
@@ -84,16 +74,5 @@ http://localhost:8080/api/integrations/github/callback
 
 Enable repository **Metadata: Read-only**. Do not enable additional write permissions for V4.0. GitHub recommends GitHub Apps over OAuth Apps and recommends keeping client secrets and user tokens secure on the server.
 
-Set these environment variables:
-
-```text
-GITHUB_APP_CLIENT_ID=...
-GITHUB_APP_CLIENT_SECRET=...
-GITHUB_REDIRECT_URI=https://stackroom.site/api/integrations/github/callback
-STACKROOM_PUBLIC_URL=https://stackroom.site
-GITHUB_TOKEN_ENCRYPTION_KEY=...
-```
-
-`GITHUB_TOKEN_ENCRYPTION_KEY` must decode to exactly 32 random bytes. It can be supplied as standard base64 or 64-character hex. Never commit it.
 
 GitHub sources: [Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app), [User authorization callback URL](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url), [Generating a user access token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app).
