@@ -51,6 +51,7 @@
         <button class="nav-item active" type="button" data-nav="projects"><span class="nav-icon">◫</span> Projects <span class="nav-count" id="projectCount">0</span></button>
         <button class="nav-item" type="button" data-nav="domains"><span class="nav-icon">@</span> Domains</button>
         <button class="nav-item" type="button" data-nav="attention"><span class="nav-icon">!</span> Attention</button>
+        <button class="nav-item" type="button" data-nav="integrations"><span class="nav-icon">↗</span> Integrations</button>
       </nav>
 
       <div class="sidebar-footer">
@@ -143,6 +144,13 @@
         <section class="attention-grid" id="attentionGrid"></section>
       </section>
 
+      <section class="page-view resource-page" id="integrationsView" hidden>
+        <section class="page-heading compact-heading">
+          <div><p class="eyebrow">Connections <span class="eyebrow-line"></span></p><h1>Your tools,<br /><em>inside Stackroom.</em></h1><p class="heading-copy">Connect the services that power your projects. V4 starts with GitHub.</p></div>
+        </section>
+        <section class="integration-shell" id="githubIntegrationCard"></section>
+      </section>
+
   <div class="modal-backdrop" id="modalBackdrop" hidden>
     <section class="project-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <button class="modal-close" id="closeModalButton" type="button" aria-label="Close dialog">×</button>
@@ -206,6 +214,17 @@
     </section>
   </div>
 
+  <div class="modal-backdrop" id="githubPickerBackdrop" hidden>
+    <section class="project-modal github-picker-modal" role="dialog" aria-modal="true" aria-labelledby="githubPickerTitle">
+      <button class="modal-close" id="closeGithubPickerButton" type="button" aria-label="Close dialog">×</button>
+      <p class="eyebrow">GitHub <span class="eyebrow-line"></span></p>
+      <h2 id="githubPickerTitle">Link a repository.</h2>
+      <p class="modal-copy">Choose a repository from your connected GitHub account.</p>
+      <label class="field-label">Search repositories<input id="githubRepoSearch" type="search" placeholder="Search by repository name..." autocomplete="off" /></label>
+      <div class="github-repo-list" id="githubRepoList"></div>
+    </section>
+  </div>
+
   <div class="command-backdrop" id="commandBackdrop" hidden>
     <section class="command-palette" role="dialog" aria-modal="true" aria-labelledby="commandTitle">
       <div class="command-top"><span id="commandTitle">Command</span><kbd>Esc</kbd></div>
@@ -215,6 +234,6 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script src="app.js?v=3.0.2"></script>
+  <script src="app.js?v=4.0.0"></script>
 </body>
 </html>

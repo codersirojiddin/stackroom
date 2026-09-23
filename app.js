@@ -7,6 +7,9 @@ const state = {
   editing: false,
   user: null,
   commandOpen: false,
+  github: { connected: false, configured: false, connection: null, repositoryCount: 0 },
+  githubRepositories: [],
+  githubPickerProject: null,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -37,6 +40,12 @@ const refs = {
   projectsView: $('#projectsView'),
   domainsView: $('#domainsView'),
   attentionView: $('#attentionView'),
+  integrationsView: $('#integrationsView'),
+  githubIntegrationCard: $('#githubIntegrationCard'),
+  githubPickerBackdrop: $('#githubPickerBackdrop'),
+  githubPickerTitle: $('#githubPickerTitle'),
+  githubRepoSearch: $('#githubRepoSearch'),
+  githubRepoList: $('#githubRepoList'),
   detailHeader: $('#detailHeader'),
   detailGrid: $('#detailGrid'),
   domainsTable: $('#domainsTable'),
@@ -145,11 +154,13 @@ function setPage(page) {
   refs.detailView.hidden = page !== 'detail';
   refs.domainsView.hidden = page !== 'domains';
   refs.attentionView.hidden = page !== 'attention';
+  refs.integrationsView.hidden = page !== 'integrations';
   $$('.nav-item').forEach(button => button.classList.toggle('active', button.dataset.nav === page));
-  const current = { projects: 'All projects', detail: state.currentProject?.name || 'Project', domains: 'Domains', attention: 'Attention' }[page] || 'All projects';
+  const current = { projects: 'All projects', detail: state.currentProject?.name || 'Project', domains: 'Domains', attention: 'Attention', integrations: 'Integrations' }[page] || 'All projects';
   $('#breadcrumbCurrent').textContent = current;
   if (page === 'domains') renderDomainsPage();
   if (page === 'attention') renderAttentionPage();
+  if (page === 'integrations') { renderGithubIntegration(); loadGithubStatus(); }
 }
 
 function setAuthMode(mode) {
@@ -186,6 +197,9 @@ async function loadSession() {
 
       enterApp();
       await loadProjects();
+      const githubStatus = new URLSearchParams(window.location.search).get('github');
+      if (githubStatus === 'connected') { showToast('GitHub connected.'); history.replaceState({}, '', window.location.pathname); }
+      if (githubStatus === 'error') { showToast('GitHub connection failed. Please check the integration settings.'); history.replaceState({}, '', window.location.pathname); }
       return;
     }
   } catch (error) {
@@ -202,6 +216,7 @@ function enterApp() {
   refs.avatarButton.textContent = initials(user.name || user.email || 'S');
   refs.profileName.textContent = user.name || 'Signed in';
   refs.profileEmail.textContent = user.email || '—';
+  loadGithubStatus();
 }
 
 async function submitAuth(event) {
@@ -257,6 +272,7 @@ function projectSearchText(project) {
     ...(project.deployments || []).flatMap(item => [item.name, item.provider, item.environment, item.url, item.repository]),
     ...(project.databases || []).flatMap(item => [item.name, item.provider, item.databaseType, item.environment]),
     ...(project.links || []).flatMap(item => [item.label, item.url, item.kind]),
+    project.github ? [project.github.fullName, project.github.name, project.github.owner, project.github.defaultBranch, project.github.description].join(' ') : '',
     project.notes,
   ].join(' ').toLowerCase();
 }
@@ -278,6 +294,7 @@ function projectHealth(project) {
     Boolean(project.deployments?.length),
     Boolean(project.databases?.length),
     Boolean(project.links?.length),
+    Boolean(project.github),
     Boolean(project.notes?.trim()),
   ];
   const score = Math.round((checks.filter(Boolean).length / checks.length) * 100);
@@ -381,7 +398,7 @@ function renderDetail(project) {
   const tags = project.technologies?.map(item => `<span class="technology-chip">${escapeHTML(item.name)}<small>${escapeHTML(item.kind || 'other')}</small></span>`).join('');
   const activity = (project.activities || []).map(item => `<div class="activity-item"><div class="activity-dot"></div><div><strong>${escapeHTML(item.action)}</strong><p>${escapeHTML(item.detail || '')}</p></div><time>${relativeTime(item.createdAt)}</time></div>`).join('');
   const healthChecks = [
-    ['Description', Boolean(project.description?.trim())], ['Category', Boolean(project.category?.trim())], ['Technology', Boolean(project.technologies?.length)], ['Domains', Boolean(project.domains?.length)], ['Deployments', Boolean(project.deployments?.length)], ['Databases', Boolean(project.databases?.length)], ['Links', Boolean(project.links?.length)], ['Notes', Boolean(project.notes?.trim())],
+    ['Description', Boolean(project.description?.trim())], ['Category', Boolean(project.category?.trim())], ['Technology', Boolean(project.technologies?.length)], ['Domains', Boolean(project.domains?.length)], ['Deployments', Boolean(project.deployments?.length)], ['Databases', Boolean(project.databases?.length)], ['Links', Boolean(project.links?.length)], ['GitHub', Boolean(project.github)], ['Notes', Boolean(project.notes?.trim())],
   ];
   const healthContent = `<div class="health-hero"><div><span>${healthLabel(health.score)}</span><strong>${health.score}%</strong></div><div class="health-track large"><i style="width:${health.score}%"></i></div></div><div class="health-checks">${healthChecks.map(([label, ok]) => `<div class="health-check ${ok ? 'ok' : ''}"><span>${ok ? '✓' : '·'}</span>${label}</div>`).join('')}</div>`;
 
@@ -392,12 +409,124 @@ function renderDetail(project) {
     detailSection('Databases', '03', metaList(databases, 'No databases attached.')),
     detailSection('Technology', '04', tags ? `<div class="technology-grid">${tags}</div>` : '<div class="detail-empty">No technologies tracked yet.</div>'),
     detailSection('Links', '05', metaList(links, 'No links attached.')),
-    detailSection('Notes', '06', `<div class="notes-card">${escapeHTML(project.notes || 'No notes added yet.')}</div>`),
-    detailSection('Activity', '07', activity ? `<div class="activity-list">${activity}</div>` : '<div class="detail-empty">No activity yet.</div>', 'activity-section'),
+    detailSection('GitHub', '06', renderProjectGithub(project)),
+    detailSection('Notes', '07', `<div class="notes-card">${escapeHTML(project.notes || 'No notes added yet.')}</div>`),
+    detailSection('Activity', '08', activity ? `<div class="activity-list">${activity}</div>` : '<div class="detail-empty">No activity yet.</div>', 'activity-section'),
   ].join('');
 
   $('#detailEditButton').addEventListener('click', () => openProjectModal(project));
   $('#detailDeleteButton').addEventListener('click', () => deleteProject(project.id));
+  const githubAction = $('#detailGithubButton');
+  if (githubAction) githubAction.addEventListener('click', () => openGithubPicker(project));
+  const githubUnlink = $('#detailGithubUnlink');
+  if (githubUnlink) githubUnlink.addEventListener('click', () => unlinkGithubRepository(project));
+}
+
+
+function renderProjectGithub(project) {
+  if (project.github) {
+    const repo = project.github;
+    return `<div class="github-project-card"><div class="github-project-main"><div class="github-logo">GH</div><div><strong>${escapeHTML(repo.fullName)}</strong><p>${escapeHTML([repo.private ? 'Private' : 'Public', repo.defaultBranch ? `Default: ${repo.defaultBranch}` : ''].filter(Boolean).join(' · '))}</p>${repo.description ? `<p>${escapeHTML(repo.description)}</p>` : ''}</div></div><div class="github-project-actions"><a class="button button-quiet" href="${escapeHTML(repo.htmlUrl)}" target="_blank" rel="noopener noreferrer">Open GitHub ↗</a><button class="button button-quiet" id="detailGithubUnlink" type="button">Unlink</button></div></div>`;
+  }
+  if (!state.github.connected) return `<div class="detail-empty">Connect GitHub to link a repository to this project.</div><button class="button button-primary" type="button" id="detailGithubButton">Connect GitHub <span>→</span></button>`;
+  return `<div class="github-unlinked-card"><div><strong>No repository linked.</strong><p>Choose a repository from @${escapeHTML(state.github.connection?.login || 'GitHub')}.</p></div><button class="button button-primary" type="button" id="detailGithubButton">Choose repository <span>→</span></button></div>`;
+}
+
+async function loadGithubStatus() {
+  try {
+    const payload = await api('/api/integrations/github/status');
+    state.github = payload || { connected: false, configured: false };
+    renderGithubIntegration();
+  } catch (error) {
+    state.github = { connected: false, configured: false, connection: null, repositoryCount: 0 };
+    renderGithubIntegration();
+  }
+}
+
+function renderGithubIntegration() {
+  if (!refs.githubIntegrationCard) return;
+  if (!state.github.configured) {
+    refs.githubIntegrationCard.innerHTML = `<article class="integration-card"><div class="integration-icon">GH</div><div class="integration-copy"><span class="integration-kicker">GitHub</span><h3>Integration not configured.</h3><p>Add the GitHub App environment variables to the server before connecting.</p><div class="integration-note">Required: client ID, client secret, redirect URI and a 32-byte encryption key.</div></div></article>`;
+    return;
+  }
+  if (!state.github.connected) {
+    refs.githubIntegrationCard.innerHTML = `<article class="integration-card"><div class="integration-icon">GH</div><div class="integration-copy"><span class="integration-kicker">GitHub</span><h3>Connect your GitHub account.</h3><p>Import repositories and link them directly to Stackroom projects.</p><button class="button button-primary" id="connectGithubButton" type="button">Connect GitHub <span>→</span></button></div></article>`;
+    $('#connectGithubButton')?.addEventListener('click', () => { window.location.href = '/api/integrations/github/connect'; });
+    return;
+  }
+  refs.githubIntegrationCard.innerHTML = `<article class="integration-card connected"><div class="integration-icon">GH</div><div class="integration-copy"><div class="integration-heading"><div><span class="integration-kicker">GitHub</span><h3>@${escapeHTML(state.github.connection?.login || 'connected')}</h3></div><span class="connected-pill"><i></i>Connected</span></div><p>${state.github.repositoryCount || 0} repositories cached for project linking.</p><div class="integration-actions"><button class="button button-quiet" id="refreshGithubButton" type="button">Refresh repositories</button><button class="button button-quiet" id="disconnectGithubButton" type="button">Disconnect</button></div></div></article>`;
+  $('#refreshGithubButton')?.addEventListener('click', async () => { await loadGithubRepositories(); showToast('GitHub repositories refreshed.'); });
+  $('#disconnectGithubButton')?.addEventListener('click', disconnectGithub);
+}
+
+async function disconnectGithub() {
+  if (!window.confirm('Disconnect GitHub from Stackroom? Linked repositories will be unlinked from projects.')) return;
+  try {
+    await api('/api/integrations/github/disconnect', { method: 'POST', body: '{}' });
+    state.github = { connected: false, configured: true, connection: null, repositoryCount: 0 };
+    state.projects = state.projects.map(project => ({ ...project, github: null }));
+    if (state.currentProject) state.currentProject = state.projects.find(project => project.id === state.currentProject.id) || state.currentProject;
+    renderGithubIntegration();
+    if (state.currentProject) renderDetail(state.currentProject);
+    showToast('GitHub disconnected.');
+  } catch (error) { showToast(error.message); }
+}
+
+async function loadGithubRepositories(query = '') {
+  const payload = await api(`/api/github/repositories${query ? `?q=${encodeURIComponent(query)}` : ''}`);
+  state.githubRepositories = Array.isArray(payload) ? payload : [];
+  renderGithubRepositories();
+}
+
+function renderGithubRepositories() {
+  if (!state.githubRepositories.length) {
+    refs.githubRepoList.innerHTML = '<div class="detail-empty">No repositories found.</div>';
+    return;
+  }
+  refs.githubRepoList.innerHTML = state.githubRepositories.map(repo => `<button class="github-repo-item" type="button" data-repository-id="${escapeHTML(repo.id)}" ${repo.linkedProjectID && repo.linkedProjectID !== state.githubPickerProject?.id ? 'disabled' : ''}><div class="github-repo-mark">${repo.private ? 'P' : 'R'}</div><span><strong>${escapeHTML(repo.fullName)}</strong><small>${escapeHTML(repo.description || (repo.defaultBranch ? `Default branch: ${repo.defaultBranch}` : ''))}</small></span><b>${repo.linkedProjectID === state.githubPickerProject?.id ? 'Linked' : repo.linkedProjectID ? `Used by ${escapeHTML(repo.linkedProjectName || 'another project')}` : 'Link →'}</b></button>`).join('');
+}
+
+async function openGithubPicker(project) {
+  if (!state.github.connected) { setPage('integrations'); return; }
+  state.githubPickerProject = project;
+  refs.githubPickerTitle.textContent = `Link a repository to ${project.name}.`;
+  refs.githubPickerBackdrop.hidden = false;
+  document.body.classList.add('modal-open');
+  refs.githubRepoSearch.value = '';
+  refs.githubRepoList.innerHTML = '<div class="detail-empty">Loading repositories...</div>';
+  try { await loadGithubRepositories(); } catch (error) { refs.githubRepoList.innerHTML = `<div class="detail-empty">${escapeHTML(error.message)}</div>`; }
+  setTimeout(() => refs.githubRepoSearch.focus(), 0);
+}
+
+function closeGithubPicker() {
+  refs.githubPickerBackdrop.hidden = true;
+  document.body.classList.remove('modal-open');
+  state.githubPickerProject = null;
+}
+
+async function linkGithubRepository(repositoryID) {
+  const project = state.githubPickerProject;
+  if (!project) return;
+  try {
+    const repo = await api(`/api/projects/${encodeURIComponent(project.id)}/github`, { method: 'POST', body: JSON.stringify({ repositoryId: repositoryID }) });
+    const index = state.projects.findIndex(item => item.id === project.id);
+    if (index >= 0) { state.projects[index] = { ...state.projects[index], github: repo }; state.currentProject = state.projects[index]; }
+    closeGithubPicker();
+    renderDetail(state.currentProject);
+    renderDashboard();
+    showToast('GitHub repository linked.');
+  } catch (error) { showToast(error.message); }
+}
+
+async function unlinkGithubRepository(project) {
+  if (!window.confirm(`Unlink the GitHub repository from “${project.name}”?`)) return;
+  try {
+    await api(`/api/projects/${encodeURIComponent(project.id)}/github`, { method: 'DELETE' });
+    const index = state.projects.findIndex(item => item.id === project.id);
+    if (index >= 0) { state.projects[index] = { ...state.projects[index], github: null }; state.currentProject = state.projects[index]; }
+    renderDetail(state.currentProject);
+    showToast('GitHub repository unlinked.');
+  } catch (error) { showToast(error.message); }
 }
 
 function renderDomainsPage() {
@@ -611,6 +740,7 @@ function renderCommandItems() {
     { label: 'Search projects', meta: 'Jump to project search', action: 'search', icon: '⌕' },
     { label: 'Open domains', meta: 'View every tracked domain', action: 'domains', icon: '@' },
     { label: 'Open attention', meta: 'Review items that need attention', action: 'attention', icon: '!' },
+    { label: 'Open integrations', meta: 'Connect GitHub and other tools', action: 'integrations', icon: '↗' },
   ].filter(item => !query || `${item.label} ${item.meta}`.toLowerCase().includes(query));
   refs.commandList.innerHTML = items.length ? items.map((item, index) => `<button class="command-item" type="button" data-command="${item.action}" data-index="${index}"><span class="command-icon">${item.icon}</span><span><strong>${item.label}</strong><small>${item.meta}</small></span><kbd>${index + 1}</kbd></button>`).join('') : '<div class="command-empty">No matching actions.</div>';
 }
@@ -686,6 +816,11 @@ refs.attentionGrid.addEventListener('click', event => {
   if (project) renderDetail(project);
 });
 
+$('#closeGithubPickerButton').addEventListener('click', closeGithubPicker);
+refs.githubPickerBackdrop.addEventListener('click', event => { if (event.target === refs.githubPickerBackdrop) closeGithubPicker(); });
+refs.githubRepoSearch.addEventListener('input', async () => { try { await loadGithubRepositories(refs.githubRepoSearch.value.trim()); } catch (error) { refs.githubRepoList.innerHTML = `<div class="detail-empty">${escapeHTML(error.message)}</div>`; } });
+refs.githubRepoList.addEventListener('click', event => { const button = event.target.closest('[data-repository-id]'); if (button && !button.disabled) linkGithubRepository(button.dataset.repositoryId); });
+
 refs.commandInput.addEventListener('input', renderCommandItems);
 refs.commandBackdrop.addEventListener('click', event => { if (event.target === refs.commandBackdrop) closeCommandPalette(); });
 refs.commandList.addEventListener('click', event => {
@@ -697,6 +832,7 @@ refs.commandList.addEventListener('click', event => {
   if (action === 'search') { setPage('projects'); renderDashboard(); refs.searchInput.focus(); }
   if (action === 'domains') setPage('domains');
   if (action === 'attention') setPage('attention');
+  if (action === 'integrations') setPage('integrations');
 });
 
 document.addEventListener('click', event => {
@@ -707,12 +843,13 @@ document.addEventListener('click', event => {
 document.addEventListener('keydown', event => {
   if (event.key === '/' && document.activeElement !== refs.searchInput && refs.modalBackdrop.hidden && refs.commandBackdrop.hidden) { event.preventDefault(); setPage('projects'); refs.searchInput.focus(); }
   if (event.key === 'Escape') {
-    if (!refs.commandBackdrop.hidden) closeCommandPalette();
+    if (!refs.githubPickerBackdrop.hidden) closeGithubPicker();
+    else if (!refs.commandBackdrop.hidden) closeCommandPalette();
     else if (!refs.modalBackdrop.hidden) closeProjectModal();
     else refs.profileMenu.hidden = true;
   }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); if (refs.commandBackdrop.hidden) openCommandPalette(); else closeCommandPalette(); }
-  if (!refs.commandBackdrop.hidden && /^[1-4]$/.test(event.key)) {
+  if (!refs.commandBackdrop.hidden && /^[1-5]$/.test(event.key)) {
     const item = $('.command-item[data-index="' + (Number(event.key) - 1) + '"]');
     if (item) item.click();
   }

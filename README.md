@@ -1,53 +1,99 @@
-# Stackroom
+# Stackroom v4.0
 
-> Your builds, kept close.
+Stackroom is a private project workspace built with Go + PostgreSQL/Neon. It keeps the technical details that tend to get scattered across registrar dashboards, hosting providers, repositories, databases, design tools and notes in one place.
 
-Stackroom is a private developer workspace for keeping projects and their technical infrastructure organized in one place.
+## What is in v4.0
 
-Track the details that are usually scattered across domain registrars, hosting platforms, repositories, databases, design tools, and personal notes.
-
-## Features
-
-- Secure authentication with Neon Auth
-- Google OAuth sign-in
-- Per-user project management with server-side ownership checks
-- Project metadata including status, priority, category, description, and notes
-- Domain management with registrar, DNS provider, expiration, and auto-renew details
-- Deployment tracking with provider, environment, URL, branch, and status
-- Database tracking with provider, type, environment, and console URL
-- Technology tags and project links
-- Project health and completeness indicators
-- Activity timeline
+- Neon Auth-backed sign in/sign up and Google OAuth proxy
+- Per-user project CRUD with server-side ownership checks
+- Rich project records: status, priority, category, description and notes
+- Domains: hostname, registrar, DNS provider, expiry and auto-renew metadata
+- Deployments: provider, environment, URL, repository, branch and status
+- Databases: provider, type, environment and console URL
+- Typed technology tags and project links
+- Project completeness / health indicator
+- Activity timeline for project creation and updates
 - Global domain registry
-- Attention queue for domains, inactive projects, and incomplete records
-- Global project search
-- Command palette with `Ctrl/Cmd + K`
-- Grid and list views
-- Responsive interface
-- GitHub integration
-- Repository linking and metadata
+- Attention queue for expired / soon-to-expire domains, quiet projects and incomplete records
+- Global project search across metadata
+- Command palette with Ctrl/Cmd + K
+- Grid / list views and responsive UI
+- Safe PostgreSQL migration from the earlier Stackroom schema
 
-## Tech Stack
+## Run locally
 
-- **Backend:** Go
-- **Database:** PostgreSQL
-- **Database Platform:** Neon
-- **Authentication:** Neon Auth
-- **GitHub Integration:** GitHub App + GitHub API
-- **Frontend:** HTML, CSS, JavaScript
+1. Copy `.env.example` to `.env` and set your Neon values.
+2. Run `schema.sql` against the Neon branch used by Stackroom. The migration uses `create ... if not exists`, additive columns and backfills, so it is designed to upgrade the previous schema in place.
+3. Enable Managed Better Auth for the same Neon branch and set `NEON_AUTH_BASE_URL`.
+4. Enable Google sign-in if you want the Google button to work.
+5. Start the Go server:
+
+```powershell
+go mod tidy
+go run .
+```
+
+Open `http://localhost:8080`.
+
+### Environment
+
+```text
+DATABASE_URL=...
+NEON_AUTH_BASE_URL=...
+PORT=8080
+```
+
+Never commit `.env`.
 
 ## Architecture
 
 ```text
-User
- │
- ├── Neon Auth
- │
- └── Projects
-      ├── Domains
-      ├── Deployments
-      ├── Databases
-      ├── Technologies
-      ├── Links
-      ├── Activity
-      └── GitHub Repository
+projects
+  ├── project_domains
+  ├── project_deployments
+  ├── project_databases
+  ├── project_technologies
+  ├── project_links
+  └── project_activity
+```
+
+Every project read, update and delete is scoped by the authenticated Neon Auth user ID. Child rows are replaced transactionally when a project is updated.
+
+## Security note
+
+Do not store database passwords, API secrets, private keys or full `DATABASE_URL` values as ordinary project metadata. A future secrets integration should use a dedicated secret manager and display masked references in Stackroom.
+
+## Verification
+
+`app.js` passes the Node.js syntax check. Final Go compilation could not be completed in the offline build environment because the container could not download the existing Go dependencies from `proxy.golang.org`.
+## V3.0.2
+
+Fixed Neon Auth OAuth callback handling. When Neon Auth redirects back with `neon_auth_session_verifier`, the app now forwards the verifier to `/api/auth/get-session` so Neon Auth can finalize the session. The verifier is removed from the URL after a successful session exchange.
+
+
+### V4.0 — GitHub integration
+
+V4 adds a server-side GitHub App integration using GitHub's user authorization flow. Users can connect GitHub, securely store short-lived access/refresh tokens encrypted at rest, import accessible repositories, and link one repository to a Stackroom project. GitHub App permissions are configured at the App level rather than through runtime OAuth scopes. GitHub currently issues expiring user access tokens by default (8 hours) with refresh tokens that can be used to renew them.
+
+Before enabling the integration, create a GitHub App and configure the exact callback URL(s):
+
+```text
+https://stackroom.site/api/integrations/github/callback
+http://localhost:8080/api/integrations/github/callback
+```
+
+Enable repository **Metadata: Read-only**. Do not enable additional write permissions for V4.0. GitHub recommends GitHub Apps over OAuth Apps and recommends keeping client secrets and user tokens secure on the server.
+
+Set these environment variables:
+
+```text
+GITHUB_APP_CLIENT_ID=...
+GITHUB_APP_CLIENT_SECRET=...
+GITHUB_REDIRECT_URI=https://stackroom.site/api/integrations/github/callback
+STACKROOM_PUBLIC_URL=https://stackroom.site
+GITHUB_TOKEN_ENCRYPTION_KEY=...
+```
+
+`GITHUB_TOKEN_ENCRYPTION_KEY` must decode to exactly 32 random bytes. It can be supplied as standard base64 or 64-character hex. Never commit it.
+
+GitHub sources: [Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app), [User authorization callback URL](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url), [Generating a user access token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app).

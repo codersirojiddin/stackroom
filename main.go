@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -30,22 +34,23 @@ type Activity struct {
 }
 
 type Project struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	Slug         string        `json:"slug"`
-	Description  string        `json:"description"`
-	Status       string        `json:"status"`
-	Category     string        `json:"category"`
-	Priority     string        `json:"priority"`
-	Technologies []Technology  `json:"technologies"`
-	Domains      []Domain      `json:"domains"`
-	Deployments  []Deployment  `json:"deployments"`
-	Databases    []ProjectDB   `json:"databases"`
-	Links        []ProjectLink `json:"links"`
-	Notes        string        `json:"notes"`
-	Activities   []Activity    `json:"activities"`
-	CreatedAt    string        `json:"createdAt"`
-	UpdatedAt    string        `json:"updatedAt"`
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Slug         string            `json:"slug"`
+	Description  string            `json:"description"`
+	Status       string            `json:"status"`
+	Category     string            `json:"category"`
+	Priority     string            `json:"priority"`
+	Technologies []Technology      `json:"technologies"`
+	Domains      []Domain          `json:"domains"`
+	Deployments  []Deployment      `json:"deployments"`
+	Databases    []ProjectDB       `json:"databases"`
+	Links        []ProjectLink     `json:"links"`
+	Notes        string            `json:"notes"`
+	Activities   []Activity        `json:"activities"`
+	GitHub       *GitHubRepository `json:"github,omitempty"`
+	CreatedAt    string            `json:"createdAt"`
+	UpdatedAt    string            `json:"updatedAt"`
 }
 
 type Technology struct {
@@ -93,11 +98,67 @@ type ProjectLink struct {
 	Kind  string `json:"kind"`
 }
 
+type GitHubRepository struct {
+	ID                string `json:"id"`
+	GitHubRepoID      int64  `json:"githubRepoId"`
+	Owner             string `json:"owner"`
+	Name              string `json:"name"`
+	FullName          string `json:"fullName"`
+	HTMLURL           string `json:"htmlUrl"`
+	DefaultBranch     string `json:"defaultBranch"`
+	Private           bool   `json:"private"`
+	Description       string `json:"description"`
+	UpdatedAt         string `json:"updatedAt"`
+	LinkedProjectID   string `json:"linkedProjectId,omitempty"`
+	LinkedProjectName string `json:"linkedProjectName,omitempty"`
+}
+
+type GitHubConnection struct {
+	ID           string `json:"id"`
+	Login        string `json:"login"`
+	AvatarURL    string `json:"avatarUrl"`
+	GitHubUserID int64  `json:"githubUserId"`
+	ConnectedAt  string `json:"connectedAt"`
+}
+
+type githubTokenResponse struct {
+	AccessToken           string `json:"access_token"`
+	TokenType             string `json:"token_type"`
+	ExpiresIn             int    `json:"expires_in"`
+	RefreshToken          string `json:"refresh_token"`
+	RefreshTokenExpiresIn int    `json:"refresh_token_expires_in"`
+}
+
+type githubUserResponse struct {
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+type githubRepoResponse struct {
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	FullName      string `json:"full_name"`
+	HTMLURL       string `json:"html_url"`
+	DefaultBranch string `json:"default_branch"`
+	Private       bool   `json:"private"`
+	Description   string `json:"description"`
+	UpdatedAt     string `json:"updated_at"`
+	Owner         struct {
+		Login string `json:"login"`
+	} `json:"owner"`
+}
+
 type projectStore struct {
-	pool        *pgxpool.Pool
-	authBaseURL string
-	memory      map[string]Project
-	memoryMu    sync.RWMutex
+	pool               *pgxpool.Pool
+	authBaseURL        string
+	memory             map[string]Project
+	memoryMu           sync.RWMutex
+	githubClientID     string
+	githubClientSecret string
+	githubRedirectURI  string
+	githubPublicURL    string
+	githubTokenKey     []byte
 }
 
 func main() {
@@ -105,6 +166,11 @@ func main() {
 
 	store := &projectStore{memory: make(map[string]Project)}
 	store.authBaseURL = strings.TrimRight(os.Getenv("NEON_AUTH_BASE_URL"), "/")
+	store.githubClientID = strings.TrimSpace(os.Getenv("GITHUB_APP_CLIENT_ID"))
+	store.githubClientSecret = strings.TrimSpace(os.Getenv("GITHUB_APP_CLIENT_SECRET"))
+	store.githubRedirectURI = strings.TrimSpace(os.Getenv("GITHUB_REDIRECT_URI"))
+	store.githubPublicURL = strings.TrimRight(strings.TrimSpace(os.Getenv("STACKROOM_PUBLIC_URL")), "/")
+	store.githubTokenKey = parseEncryptionKey(os.Getenv("GITHUB_TOKEN_ENCRYPTION_KEY"))
 
 	if connectionString := os.Getenv("DATABASE_URL"); connectionString != "" {
 		pool, err := pgxpool.New(context.Background(), connectionString)
@@ -126,6 +192,11 @@ func main() {
 	mux.HandleFunc("/api/auth/", store.authHandler)
 	mux.HandleFunc("/api/projects", store.projectsHandler)
 	mux.HandleFunc("/api/projects/", store.projectHandler)
+	mux.HandleFunc("/api/integrations/github/connect", store.githubConnectHandler)
+	mux.HandleFunc("/api/integrations/github/callback", store.githubCallbackHandler)
+	mux.HandleFunc("/api/integrations/github/status", store.githubStatusHandler)
+	mux.HandleFunc("/api/integrations/github/disconnect", store.githubDisconnectHandler)
+	mux.HandleFunc("/api/github/repositories", store.githubRepositoriesHandler)
 	mux.Handle("/", http.FileServer(http.Dir(".")))
 
 	port := os.Getenv("PORT")
@@ -195,6 +266,10 @@ func (store *projectStore) projectsHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (store *projectStore) projectHandler(w http.ResponseWriter, r *http.Request) {
+	if strings.HasSuffix(r.URL.Path, "/github") {
+		store.projectGitHubHandler(w, r)
+		return
+	}
 	rawID := strings.TrimPrefix(r.URL.Path, "/api/projects/")
 	if rawID == "" || strings.Contains(rawID, "/") {
 		http.NotFound(w, r)
@@ -533,6 +608,9 @@ func (store *projectStore) loadProjectChildren(ctx context.Context, project *Pro
 		project.Activities = append(project.Activities, item)
 	}
 	rows.Close()
+	if err := store.loadProjectGitHub(ctx, project); err != nil {
+		return err
+	}
 	return rows.Err()
 }
 
@@ -679,6 +757,585 @@ func (store *projectStore) userFromRequest(r *http.Request) (string, bool, error
 	return payload.User.ID, true, nil
 }
 
+func (store *projectStore) githubConfigured() bool {
+	return store.githubClientID != "" && store.githubClientSecret != "" && store.githubRedirectURI != "" && len(store.githubTokenKey) == 32 && store.pool != nil
+}
+
+func (store *projectStore) githubConnectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		writeError(w, http.StatusMethodNotAllowed, errors.New("method not allowed"))
+		return
+	}
+	if !store.githubConfigured() {
+		writeError(w, http.StatusServiceUnavailable, errors.New("GitHub integration is not configured"))
+		return
+	}
+	userID, authenticated, err := store.userFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	if !authenticated {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+		return
+	}
+
+	stateBytes := make([]byte, 32)
+	if _, err := rand.Read(stateBytes); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	state := base64.RawURLEncoding.EncodeToString(stateBytes)
+	hash := sha256.Sum256([]byte(state))
+	_, _ = store.pool.Exec(r.Context(), `delete from github_oauth_states where expires_at < now()`)
+	if _, err := store.pool.Exec(r.Context(), `insert into github_oauth_states(state_hash,user_id,expires_at) values($1,$2,now()+interval '10 minutes')`, hex.EncodeToString(hash[:]), userID); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	authURL, err := url.Parse("https://github.com/login/oauth/authorize")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	q := authURL.Query()
+	q.Set("client_id", store.githubClientID)
+	q.Set("redirect_uri", store.githubRedirectURI)
+	q.Set("state", state)
+	authURL.RawQuery = q.Encode()
+	http.Redirect(w, r, authURL.String(), http.StatusFound)
+}
+
+func (store *projectStore) githubCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		writeError(w, http.StatusMethodNotAllowed, errors.New("method not allowed"))
+		return
+	}
+	if !store.githubConfigured() {
+		http.Redirect(w, r, "/?github=error&reason=not_configured", http.StatusFound)
+		return
+	}
+	if oauthErr := r.URL.Query().Get("error"); oauthErr != "" {
+		http.Redirect(w, r, "/?github=error&reason="+url.QueryEscape(oauthErr), http.StatusFound)
+		return
+	}
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+	if code == "" || state == "" {
+		http.Redirect(w, r, "/?github=error&reason=missing_parameters", http.StatusFound)
+		return
+	}
+	userID, authenticated, err := store.userFromRequest(r)
+	if err != nil {
+		http.Redirect(w, r, "/?github=error&reason=session_check", http.StatusFound)
+		return
+	}
+	if !authenticated {
+		http.Redirect(w, r, "/?github=error&reason=authentication_required", http.StatusFound)
+		return
+	}
+	hash := sha256.Sum256([]byte(state))
+	var ownerID string
+	var expiresAt time.Time
+	err = store.pool.QueryRow(r.Context(), `select user_id, expires_at from github_oauth_states where state_hash=$1`, hex.EncodeToString(hash[:])).Scan(&ownerID, &expiresAt)
+	if err != nil || ownerID != userID || time.Now().After(expiresAt) {
+		http.Redirect(w, r, "/?github=error&reason=invalid_state", http.StatusFound)
+		return
+	}
+	_, _ = store.pool.Exec(r.Context(), `delete from github_oauth_states where state_hash=$1`, hex.EncodeToString(hash[:]))
+
+	token, err := store.exchangeGitHubCode(r.Context(), code)
+	if err != nil {
+		log.Printf("github token exchange: %v", err)
+		http.Redirect(w, r, "/?github=error&reason=token_exchange", http.StatusFound)
+		return
+	}
+	ghUser, err := store.githubCurrentUser(r.Context(), token.AccessToken)
+	if err != nil {
+		log.Printf("github user fetch: %v", err)
+		http.Redirect(w, r, "/?github=error&reason=user_fetch", http.StatusFound)
+		return
+	}
+	if err := store.saveGitHubConnection(r.Context(), userID, ghUser, token); err != nil {
+		log.Printf("save github connection: %v", err)
+		http.Redirect(w, r, "/?github=error&reason=save_connection", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, store.githubReturnURL("connected"), http.StatusFound)
+}
+
+func (store *projectStore) githubReturnURL(status string) string {
+	base := store.githubPublicURL
+	if base == "" {
+		base = "/"
+	}
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+	return base + "?github=" + url.QueryEscape(status)
+}
+
+func (store *projectStore) exchangeGitHubCode(ctx context.Context, code string) (githubTokenResponse, error) {
+	form := url.Values{}
+	form.Set("client_id", store.githubClientID)
+	form.Set("client_secret", store.githubClientSecret)
+	form.Set("code", code)
+	form.Set("redirect_uri", store.githubRedirectURI)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://github.com/login/oauth/access_token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return githubTokenResponse{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return githubTokenResponse{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return githubTokenResponse{}, fmt.Errorf("GitHub token exchange returned %s", resp.Status)
+	}
+	var token githubTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
+		return githubTokenResponse{}, err
+	}
+	if token.AccessToken == "" {
+		return githubTokenResponse{}, errors.New("GitHub did not return an access token")
+	}
+	return token, nil
+}
+
+func (store *projectStore) githubCurrentUser(ctx context.Context, accessToken string) (githubUserResponse, error) {
+	var user githubUserResponse
+	if err := store.githubJSON(ctx, accessToken, http.MethodGet, "https://api.github.com/user", nil, &user); err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func (store *projectStore) saveGitHubConnection(ctx context.Context, userID string, ghUser githubUserResponse, token githubTokenResponse) error {
+	accessCipher, err := store.encryptSecret(token.AccessToken)
+	if err != nil {
+		return err
+	}
+	var refreshCipher any
+	if token.RefreshToken != "" {
+		refreshCipher, err = store.encryptSecret(token.RefreshToken)
+		if err != nil {
+			return err
+		}
+	}
+	var expiresAt any
+	if token.ExpiresIn > 0 {
+		expiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+	}
+	var refreshExpiresAt any
+	if token.RefreshTokenExpiresIn > 0 {
+		refreshExpiresAt = time.Now().Add(time.Duration(token.RefreshTokenExpiresIn) * time.Second)
+	}
+	_, err = store.pool.Exec(ctx, `
+		insert into github_connections(user_id,github_user_id,login,avatar_url,access_token_enc,refresh_token_enc,token_expires_at,refresh_token_expires_at,updated_at)
+		values($1,$2,$3,$4,$5,$6,$7,$8,now())
+		on conflict (user_id) do update set github_user_id=excluded.github_user_id, login=excluded.login, avatar_url=excluded.avatar_url, access_token_enc=excluded.access_token_enc, refresh_token_enc=excluded.refresh_token_enc, token_expires_at=excluded.token_expires_at, refresh_token_expires_at=excluded.refresh_token_expires_at, updated_at=now()`,
+		userID, ghUser.ID, ghUser.Login, ghUser.AvatarURL, accessCipher, refreshCipher, expiresAt, refreshExpiresAt)
+	return err
+}
+
+func (store *projectStore) githubStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		writeError(w, http.StatusMethodNotAllowed, errors.New("method not allowed"))
+		return
+	}
+	userID, authenticated, err := store.userFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	if !authenticated {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+		return
+	}
+	if store.pool == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"connected": false, "configured": false})
+		return
+	}
+	var connection GitHubConnection
+	var connectedAt time.Time
+	err = store.pool.QueryRow(r.Context(), `select id,github_user_id,login,coalesce(avatar_url,''),created_at from github_connections where user_id=$1`, userID).Scan(&connection.ID, &connection.GitHubUserID, &connection.Login, &connection.AvatarURL, &connectedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusOK, map[string]any{"connected": false, "configured": store.githubConfigured()})
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	connection.ConnectedAt = connectedAt.Format(time.RFC3339)
+	var repoCount int
+	_ = store.pool.QueryRow(r.Context(), `select count(*) from github_repositories where connection_id=$1`, connection.ID).Scan(&repoCount)
+	writeJSON(w, http.StatusOK, map[string]any{"connected": true, "configured": store.githubConfigured(), "connection": connection, "repositoryCount": repoCount})
+}
+
+func (store *projectStore) githubDisconnectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		writeError(w, http.StatusMethodNotAllowed, errors.New("method not allowed"))
+		return
+	}
+	userID, authenticated, err := store.userFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	if !authenticated {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+		return
+	}
+	if store.pool == nil {
+		writeJSON(w, http.StatusOK, map[string]bool{"connected": false})
+		return
+	}
+	_, err = store.pool.Exec(r.Context(), `delete from github_connections where user_id=$1`, userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"connected": false})
+}
+
+func (store *projectStore) githubRepositoriesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		writeError(w, http.StatusMethodNotAllowed, errors.New("method not allowed"))
+		return
+	}
+	userID, authenticated, err := store.userFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	if !authenticated {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+		return
+	}
+	accessToken, connectionID, err := store.githubAccessToken(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	var repos []githubRepoResponse
+	reqURL := "https://api.github.com/user/repos?per_page=100&sort=updated&direction=desc"
+	if query := strings.TrimSpace(r.URL.Query().Get("q")); query != "" {
+		// Keep the API request simple: filter locally after fetching accessible repos.
+		_ = query
+	}
+	if err := store.githubJSON(r.Context(), accessToken, http.MethodGet, reqURL, nil, &repos); err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	result := make([]GitHubRepository, 0, len(repos))
+	search := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	for _, repo := range repos {
+		if search != "" && !strings.Contains(strings.ToLower(repo.FullName+" "+repo.Name+" "+repo.Description), search) {
+			continue
+		}
+		var dbID string
+		err := store.pool.QueryRow(r.Context(), `
+			insert into github_repositories(connection_id,github_repo_id,owner,name,full_name,html_url,default_branch,private,description,updated_at)
+			values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+			on conflict(connection_id,github_repo_id) do update set owner=excluded.owner,name=excluded.name,full_name=excluded.full_name,html_url=excluded.html_url,default_branch=excluded.default_branch,private=excluded.private,description=excluded.description,updated_at=excluded.updated_at
+			returning id`, connectionID, repo.ID, repo.Owner.Login, repo.Name, repo.FullName, repo.HTMLURL, repo.DefaultBranch, repo.Private, repo.Description, parseGitHubTime(repo.UpdatedAt)).Scan(&dbID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		var linkedProjectID, linkedProjectName string
+		_ = store.pool.QueryRow(r.Context(), `select p.id,p.name from projects p where p.github_repository_id=$1 and p.owner_id=$2`, dbID, userID).Scan(&linkedProjectID, &linkedProjectName)
+		result = append(result, GitHubRepository{ID: dbID, GitHubRepoID: repo.ID, Owner: repo.Owner.Login, Name: repo.Name, FullName: repo.FullName, HTMLURL: repo.HTMLURL, DefaultBranch: repo.DefaultBranch, Private: repo.Private, Description: repo.Description, UpdatedAt: repo.UpdatedAt, LinkedProjectID: linkedProjectID, LinkedProjectName: linkedProjectName})
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func parseGitHubTime(value string) time.Time {
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Now()
+	}
+	return parsed
+}
+
+func (store *projectStore) githubAccessToken(ctx context.Context, userID string) (string, string, error) {
+	var connectionID, accessEnc string
+	var refreshEnc []byte
+	var expiresAt, refreshExpiresAt *time.Time
+	err := store.pool.QueryRow(ctx, `select id,access_token_enc,refresh_token_enc,token_expires_at,refresh_token_expires_at from github_connections where user_id=$1`, userID).Scan(&connectionID, &accessEnc, &refreshEnc, &expiresAt, &refreshExpiresAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", errors.New("GitHub is not connected")
+	}
+	if err != nil {
+		return "", "", err
+	}
+	accessToken, err := store.decryptSecret(accessEnc)
+	if err != nil {
+		return "", "", err
+	}
+	if expiresAt == nil || time.Until(*expiresAt) > 90*time.Second {
+		return accessToken, connectionID, nil
+	}
+	if len(refreshEnc) == 0 || (refreshExpiresAt != nil && time.Now().After(*refreshExpiresAt)) {
+		return "", "", errors.New("GitHub session expired; reconnect GitHub")
+	}
+	refreshToken, err := store.decryptSecret(string(refreshEnc))
+	if err != nil {
+		return "", "", err
+	}
+	newToken, err := store.refreshGitHubToken(ctx, refreshToken)
+	if err != nil {
+		return "", "", err
+	}
+	accessCipher, err := store.encryptSecret(newToken.AccessToken)
+	if err != nil {
+		return "", "", err
+	}
+	var newRefreshCipher any = string(refreshEnc)
+	if newToken.RefreshToken != "" {
+		newRefreshCipher, err = store.encryptSecret(newToken.RefreshToken)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	var newExpires any
+	if newToken.ExpiresIn > 0 {
+		newExpires = time.Now().Add(time.Duration(newToken.ExpiresIn) * time.Second)
+	}
+	var newRefreshExpires any
+	if newToken.RefreshTokenExpiresIn > 0 {
+		newRefreshExpires = time.Now().Add(time.Duration(newToken.RefreshTokenExpiresIn) * time.Second)
+	}
+	_, err = store.pool.Exec(ctx, `update github_connections set access_token_enc=$2,refresh_token_enc=$3,token_expires_at=$4,refresh_token_expires_at=coalesce($5,refresh_token_expires_at),updated_at=now() where id=$1`, connectionID, accessCipher, newRefreshCipher, newExpires, newRefreshExpires)
+	if err != nil {
+		return "", "", err
+	}
+	return newToken.AccessToken, connectionID, nil
+}
+
+func (store *projectStore) refreshGitHubToken(ctx context.Context, refreshToken string) (githubTokenResponse, error) {
+	form := url.Values{}
+	form.Set("client_id", store.githubClientID)
+	form.Set("client_secret", store.githubClientSecret)
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", refreshToken)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://github.com/login/oauth/access_token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return githubTokenResponse{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return githubTokenResponse{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return githubTokenResponse{}, fmt.Errorf("GitHub token refresh returned %s", resp.Status)
+	}
+	var token githubTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
+		return githubTokenResponse{}, err
+	}
+	if token.AccessToken == "" {
+		return githubTokenResponse{}, errors.New("GitHub token refresh failed")
+	}
+	return token, nil
+}
+
+func (store *projectStore) githubJSON(ctx context.Context, accessToken, method, endpoint string, body io.Reader, result any) error {
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("X-GitHub-Api-Version", "2026-03-10")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+		return fmt.Errorf("GitHub API returned %s: %s", resp.Status, strings.TrimSpace(string(payload)))
+	}
+	if result == nil {
+		return nil
+	}
+	return json.NewDecoder(resp.Body).Decode(result)
+}
+
+func (store *projectStore) loadProjectGitHub(ctx context.Context, project *Project) error {
+	if store.pool == nil {
+		return nil
+	}
+	var repo GitHubRepository
+	var updatedAt time.Time
+	err := store.pool.QueryRow(ctx, `
+		select r.id,r.github_repo_id,r.owner,r.name,r.full_name,r.html_url,r.default_branch,r.private,coalesce(r.description,''),r.updated_at
+		from github_repositories r join projects p on p.github_repository_id=r.id
+		where p.id=$1`, project.ID).Scan(&repo.ID, &repo.GitHubRepoID, &repo.Owner, &repo.Name, &repo.FullName, &repo.HTMLURL, &repo.DefaultBranch, &repo.Private, &repo.Description, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		project.GitHub = nil
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	repo.UpdatedAt = updatedAt.Format(time.RFC3339)
+	project.GitHub = &repo
+	return nil
+}
+
+func (store *projectStore) projectGitHubHandler(w http.ResponseWriter, r *http.Request) {
+	prefix := "/api/projects/"
+	raw := strings.TrimPrefix(r.URL.Path, prefix)
+	parts := strings.Split(strings.Trim(raw, "/"), "/")
+	if len(parts) != 2 || parts[1] != "github" {
+		http.NotFound(w, r)
+		return
+	}
+	projectID := parts[0]
+	userID, authenticated, err := store.userFromRequest(r)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err)
+		return
+	}
+	if !authenticated {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		var body struct {
+			RepositoryID string `json:"repositoryId"`
+		}
+		if err := decodeJSON(r, &body); err != nil {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		if strings.TrimSpace(body.RepositoryID) == "" {
+			writeError(w, http.StatusBadRequest, errors.New("repositoryId is required"))
+			return
+		}
+		var repo GitHubRepository
+		var updatedAt time.Time
+		err = store.pool.QueryRow(r.Context(), `select r.id,r.github_repo_id,r.owner,r.name,r.full_name,r.html_url,r.default_branch,r.private,coalesce(r.description,''),r.updated_at from github_repositories r join github_connections c on c.id=r.connection_id where r.id=$1 and c.user_id=$2`, body.RepositoryID, userID).Scan(&repo.ID, &repo.GitHubRepoID, &repo.Owner, &repo.Name, &repo.FullName, &repo.HTMLURL, &repo.DefaultBranch, &repo.Private, &repo.Description, &updatedAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				writeError(w, http.StatusNotFound, errors.New("repository not found"))
+				return
+			}
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		var owner string
+		err = store.pool.QueryRow(r.Context(), `select owner_id from projects where id=$1`, projectID).Scan(&owner)
+		if err != nil || owner != userID {
+			writeError(w, http.StatusNotFound, errors.New("project not found"))
+			return
+		}
+		var existing string
+		if err := store.pool.QueryRow(r.Context(), `select id from projects where github_repository_id=$1 and id<>$2`, body.RepositoryID, projectID).Scan(&existing); err == nil {
+			writeError(w, http.StatusConflict, errors.New("repository is already linked to another project"))
+			return
+		}
+		_, err = store.pool.Exec(r.Context(), `update projects set github_repository_id=$1,updated_at=now() where id=$2 and owner_id=$3`, body.RepositoryID, projectID, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		_, _ = store.pool.Exec(r.Context(), `insert into project_activity(project_id,action,detail) values($1,$2,$3)`, projectID, "github.linked", "Linked GitHub repository "+repo.FullName+".")
+		repo.UpdatedAt = updatedAt.Format(time.RFC3339)
+		writeJSON(w, http.StatusOK, repo)
+	case http.MethodDelete:
+		res, err := store.pool.Exec(r.Context(), `update projects set github_repository_id=null,updated_at=now() where id=$1 and owner_id=$2`, projectID, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		if res.RowsAffected() == 0 {
+			writeError(w, http.StatusNotFound, errors.New("project not found"))
+			return
+		}
+		_, _ = store.pool.Exec(r.Context(), `insert into project_activity(project_id,action,detail) values($1,$2,$3)`, projectID, "github.unlinked", "Unlinked GitHub repository.")
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		w.Header().Set("Allow", "POST, DELETE")
+		writeError(w, http.StatusMethodNotAllowed, errors.New("method not allowed"))
+	}
+}
+
+func parseEncryptionKey(value string) []byte {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	if b, err := base64.StdEncoding.DecodeString(value); err == nil && len(b) == 32 {
+		return b
+	}
+	if b, err := hex.DecodeString(value); err == nil && len(b) == 32 {
+		return b
+	}
+	return nil
+}
+
+func (store *projectStore) encryptSecret(plain string) (string, error) {
+	if len(store.githubTokenKey) != 32 {
+		return "", errors.New("GITHUB_TOKEN_ENCRYPTION_KEY must decode to 32 bytes")
+	}
+	block, err := aes.NewCipher(store.githubTokenKey)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", err
+	}
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plain), nil)
+	return base64.RawStdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (store *projectStore) decryptSecret(value string) (string, error) {
+	if len(store.githubTokenKey) != 32 {
+		return "", errors.New("GITHUB_TOKEN_ENCRYPTION_KEY must decode to 32 bytes")
+	}
+	payload, err := base64.RawStdEncoding.DecodeString(value)
+	if err != nil {
+		return "", err
+	}
+	block, err := aes.NewCipher(store.githubTokenKey)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	if len(payload) < gcm.NonceSize() {
+		return "", errors.New("invalid encrypted token")
+	}
+	nonce, ciphertext := payload[:gcm.NonceSize()], payload[gcm.NonceSize():]
+	plain, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", errors.New("unable to decrypt GitHub token")
+	}
+	return string(plain), nil
+}
+
 func normalizeProject(project *Project) {
 	project.Name = strings.TrimSpace(project.Name)
 	project.Slug = slugify(project.Slug)
@@ -759,6 +1416,10 @@ func cloneProject(project Project) Project {
 	cloned.Databases = append([]ProjectDB(nil), project.Databases...)
 	cloned.Links = append([]ProjectLink(nil), project.Links...)
 	cloned.Activities = append([]Activity(nil), project.Activities...)
+	if project.GitHub != nil {
+		repo := *project.GitHub
+		cloned.GitHub = &repo
+	}
 	return cloned
 }
 

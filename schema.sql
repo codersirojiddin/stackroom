@@ -145,3 +145,48 @@ create table if not exists project_activity (
 );
 
 create index if not exists project_activity_project_id_idx on project_activity(project_id, created_at desc);
+
+
+-- V4 GitHub integration
+create table if not exists github_connections (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null unique,
+  github_user_id bigint not null,
+  login text not null,
+  avatar_url text,
+  access_token_enc text not null,
+  refresh_token_enc text,
+  token_expires_at timestamptz,
+  refresh_token_expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists github_repositories (
+  id uuid primary key default gen_random_uuid(),
+  connection_id uuid not null references github_connections(id) on delete cascade,
+  github_repo_id bigint not null,
+  owner text not null,
+  name text not null,
+  full_name text not null,
+  html_url text not null,
+  default_branch text,
+  private boolean not null default false,
+  description text,
+  updated_at timestamptz not null,
+  unique(connection_id, github_repo_id)
+);
+
+create table if not exists github_oauth_states (
+  state_hash text primary key,
+  user_id text not null,
+  expires_at timestamptz not null
+);
+
+alter table projects add column if not exists github_repository_id uuid references github_repositories(id) on delete set null;
+
+create index if not exists github_connections_user_id_idx on github_connections(user_id);
+create index if not exists github_repositories_connection_id_idx on github_repositories(connection_id);
+create index if not exists github_repositories_full_name_idx on github_repositories(full_name);
+create index if not exists github_oauth_states_expires_at_idx on github_oauth_states(expires_at);
+create index if not exists projects_github_repository_id_idx on projects(github_repository_id);
