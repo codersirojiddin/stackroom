@@ -1,78 +1,178 @@
-# Stackroom v4.0
+# Stackroom
 
-Stackroom is a private project workspace built with Go + PostgreSQL/Neon. It keeps the technical details that tend to get scattered across registrar dashboards, hosting providers, repositories, databases, design tools and notes in one place.
+**Current release: v4.1.0 — Privacy Core**
 
-## What is in v4.0
+Stackroom is a private project workspace built with Go + PostgreSQL/Neon.
 
-- Neon Auth-backed sign in/sign up and Google OAuth proxy
-- Per-user project CRUD with server-side ownership checks
-- Rich project records: status, priority, category, description and notes
-- Domains: hostname, registrar, DNS provider, expiry and auto-renew metadata
-- Deployments: provider, environment, URL, repository, branch and status
-- Databases: provider, type, environment and console URL
-- Typed technology tags and project links
-- Project completeness / health indicator
-- Activity timeline for project creation and updates
+It keeps the technical details that tend to get scattered across registrar dashboards, hosting providers, repositories, databases, design tools, and notes in one place.
+
+**Your builds, kept close.**
+
+## What is in v4.1.0
+
+### Privacy Core
+
+- Browser-side encrypted Private Vault
+- Client-side encrypted project storage
+- Encrypted project CRUD
+- Vault create, unlock, lock, and reload flows
+- Safe migration of legacy plaintext projects
+- Migration integrity and rollback protections
+- AES-256-GCM encryption with Web Crypto
+- PBKDF2-SHA256 passphrase-based key derivation
+- Vault passphrase is never sent to the server
+- Private project content is encrypted before reaching Stackroom servers
+
+### Project workspace
+
+- Neon Auth-backed sign in/sign up
+- Google OAuth support
+- Per-user project ownership checks
+- Rich project records
+- Domains, deployments, databases, technologies, links, and notes
+- Project health / completeness indicator
 - Global domain registry
-- Attention queue for expired / soon-to-expire domains, quiet projects and incomplete records
-- Global project search across metadata
+- Attention queue
+- Global search
 - Command palette with Ctrl/Cmd + K
-- Grid / list views and responsive UI
-- Safe PostgreSQL migration from the earlier Stackroom schema
+- Grid / list views
+- Responsive UI
 
-## Run locally
+### GitHub integration
 
-1. Copy `.env.example` to `.env` and set your Neon values.
-2. Run `schema.sql` against the Neon branch used by Stackroom. The migration uses `create ... if not exists`, additive columns and backfills, so it is designed to upgrade the previous schema in place.
-3. Enable Managed Better Auth for the same Neon branch and set `NEON_AUTH_BASE_URL`.
-4. Enable Google sign-in if you want the Google button to work.
-5. Start the Go server:
+- GitHub App connection
+- Repository import
+- Repository search
+- Project repository linking
+- Encrypted GitHub access and refresh tokens
+- Refresh token support
 
-```powershell
+### Security hardening
+
+- Restrictive Content Security Policy
+- Security headers
+- Cross-origin write protection
+- Request body limits
+- Encrypted payload validation
+- Restricted public asset serving
+- XSS protections
+- Unsafe URL protections
+- Security regression tests
+
+## Privacy architecture
+
+Vault passphrase
+    ↓
+PBKDF2-SHA256
+    ↓
+AES-256-GCM wrapping key
+    ↓
+Wrapped master key
+
+Project content
+    ↓
+Web Crypto API
+    ↓
+AES-256-GCM encryption
+    ↓
+ciphertext + IV
+    ↓
+Go API
+    ↓
+Neon PostgreSQL
+
+
+Private project content is encrypted in the browser before it reaches Stackroom's servers.
+
+Stackroom stores encrypted project payloads rather than plaintext private project content.
+
+The frontend application is still delivered by Stackroom itself, so Stackroom does not currently make the stronger claim that the service operator could never technically access plaintext under every possible threat model.
+
+Architecture
+
+
+user_vaults
+    └── encrypted master-key metadata
+
+projects
+    ├── encrypted_payload
+    ├── encryption_version
+    ├── project_domains
+    ├── project_deployments
+    ├── project_databases
+    ├── project_technologies
+    ├── project_links
+    └── project_activity
+
+github_connections
+    └── encrypted access / refresh tokens
+
+
+    Authenticated project operations are scoped to the current Neon Auth user.
+
+Legacy plaintext projects can be migrated into encrypted storage after the user unlocks their vault.
+
+Run locally
+Copy .env.example to .env.
+Configure Neon PostgreSQL and Neon Auth.
+Run schema.sql and the required migrations.
+Configure GitHub App environment variables if needed.
+Start Stackroom:
 go mod tidy
 go run .
-```
 
-Open `http://localhost:8080`.
+Open:
 
-## Architecture
+http://localhost:8080
+GitHub App
 
-```text
-projects
-  ├── project_domains
-  ├── project_deployments
-  ├── project_databases
-  ├── project_technologies
-  ├── project_links
-  └── project_activity
-```
+Production callback:
 
-Every project read, update and delete is scoped by the authenticated Neon Auth user ID. Child rows are replaced transactionally when a project is updated.
-
-## Security note
-
-Do not store database passwords, API secrets, private keys or full `DATABASE_URL` values as ordinary project metadata. A future secrets integration should use a dedicated secret manager and display masked references in Stackroom.
-
-## Verification
-
-`app.js` passes the Node.js syntax check. Final Go compilation could not be completed in the offline build environment because the container could not download the existing Go dependencies from `proxy.golang.org`.
-## V3.0.2
-
-Fixed Neon Auth OAuth callback handling. When Neon Auth redirects back with `neon_auth_session_verifier`, the app now forwards the verifier to `/api/auth/get-session` so Neon Auth can finalize the session. The verifier is removed from the URL after a successful session exchange.
-
-
-### V4.0 — GitHub integration
-
-V4 adds a server-side GitHub App integration using GitHub's user authorization flow. Users can connect GitHub, securely store short-lived access/refresh tokens encrypted at rest, import accessible repositories, and link one repository to a Stackroom project. GitHub App permissions are configured at the App level rather than through runtime OAuth scopes. GitHub currently issues expiring user access tokens by default (8 hours) with refresh tokens that can be used to renew them.
-
-Before enabling the integration, create a GitHub App and configure the exact callback URL(s):
-
-```text
 https://stackroom.site/api/integrations/github/callback
+
+Local callback:
+
 http://localhost:8080/api/integrations/github/callback
-```
 
-Enable repository **Metadata: Read-only**. Do not enable additional write permissions for V4.0. GitHub recommends GitHub Apps over OAuth Apps and recommends keeping client secrets and user tokens secure on the server.
+Repository permission required for v4.1.0:
+
+Metadata: Read-only
+Security
+
+Stackroom is a project workspace, not a dedicated secrets manager.
+
+Do not store raw database passwords, private keys, seed phrases, API secrets, or other high-value credentials as ordinary project content.
 
 
-GitHub sources: [Registering a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app), [User authorization callback URL](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/about-the-user-authorization-callback-url), [Generating a user access token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app).
+
+
+Verification
+
+Stackroom v4.1.0 was validated with:
+
+go test ./...                         PASS
+go vet ./...                          PASS
+go build ./...                        PASS
+vault_browser_test.py                 PASS
+legacy_migration_browser_test.py      PASS
+production smoke test                 7/7 PASS
+Production
+
+
+
+https://stackroom.site
+
+
+
+Releases
+v4.1.0 — Privacy Core
+
+Introduced browser-side encrypted private project storage, Private Vault, safe legacy migration, security hardening, and regression coverage.
+
+v4.0.0 — GitHub Integration
+
+Introduced GitHub App connectivity, repository import, project linking, encrypted token storage, and refresh-token support.
+
+v3.0.2
+
+Fixed Neon Auth OAuth callback handling and session verifier forwarding.
