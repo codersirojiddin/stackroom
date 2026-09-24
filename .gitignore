@@ -6,3 +6,6 @@
 .DS_Store
 Thumbs.db
 *.exe
+# Python cache
+__pycache__/
+*.pyc
