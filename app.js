@@ -88,11 +88,22 @@ function escapeHTML(value = '') {
   return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' })[character]);
 }
 
+// Return only navigable HTTP(S) URLs. Never turn an explicit unsafe scheme into a link.
 function normalizeURL(value) {
   const raw = String(value || '').trim();
-  if (!raw) return '';
-  if (/^https?:\/\//i.test(raw)) return raw;
-  return `https://${raw}`;
+  if (!raw || /[\u0000-\u0020\u007f\\]/.test(raw)) return '';
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw);
+  if (hasScheme && !/^https?:\/\//i.test(raw)) return '';
+  try {
+    const url = new URL(hasScheme ? raw : `https://${raw}`);
+    if (!['https:', 'http:'].includes(url.protocol) || !url.hostname || url.username || url.password) return '';
+    return url.href;
+  } catch { return ''; }
+}
+
+function safeHref(value) {
+  const url = normalizeURL(value);
+  return url ? `href="${escapeHTML(url)}"` : 'aria-disabled="true"';
 }
 
 function statusName(status) {
@@ -106,7 +117,7 @@ function statusTone(status) {
 function relativeDate(value) {
   if (!value) return '—';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return '\u2014';
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
@@ -615,7 +626,7 @@ async function loadSession() {
       } catch (error) {
         if (error.name === 'AbortError') return;
         if (generation !== vaultGeneration) return;
-        console.error(error);
+        console.warn('Workspace request failed.');
         showToast(error.message || 'Unable to unlock the private workspace.');
       }
 
@@ -633,7 +644,7 @@ async function loadSession() {
   } catch (error) {
     if (error.name === 'AbortError') return;
     if (generation !== vaultGeneration) return;
-    console.error(error);
+    console.warn('Workspace request failed.');
   }
 
   refs.authGate.hidden = false;
@@ -678,7 +689,12 @@ async function continueWithGoogle() {
     const payload = await api('/api/auth/sign-in/social', { method: 'POST', body: JSON.stringify({ provider: 'google', callbackURL: window.location.origin + '/' }) });
     const redirectURL = payload?.url || payload?.data?.url;
     if (!redirectURL) throw new Error('Google authentication is not enabled in Neon Auth yet.');
-    window.location.assign(redirectURL);
+    const target = new URL(redirectURL, window.location.origin);
+    if (target.username || target.password || !(
+      (target.origin === window.location.origin) ||
+      (target.protocol === 'https:' && target.hostname === 'accounts.google.com')
+    )) throw new Error('The sign-in redirect is not trusted.');
+    window.location.assign(target.href);
   } catch (error) {
     if (error.name === 'AbortError') return;
     showAuthError(error.message);
@@ -706,7 +722,7 @@ async function loadProjects() {
       } catch (error) {
         if (error.name === 'AbortError') return;
         if (generation !== vaultGeneration) return;
-        console.error('Unable to decrypt project', record?.id, error);
+        console.warn('An encrypted project could not be opened.');
         showToast('One encrypted project could not be decrypted.');
       }
     }
@@ -823,15 +839,15 @@ function renderDashboard() {
     const technologies = (project.technologies || []).slice(0, 4);
     const description = project.description || project.notes || 'No description yet. Capture the context that will help future you.';
     const health = projectHealth(project);
-    return `<article class="project-card" data-id="${escapeHTML(project.id)}" style="animation-delay:${index * 45}ms">
+    return `<article class="project-card" data-id="${escapeHTML(project.id)}">
       <div class="card-top"><span class="card-index">${String(index + 1).padStart(2, '0')}</span><span class="status-pill ${escapeHTML(statusTone(project.status))}"><i></i>${statusName(project.status)}</span></div>
       <div class="card-title-row"><h3>${escapeHTML(project.name)}</h3>${project.priority === 'high' ? '<span class="priority-dot" title="High priority">!</span>' : ''}</div>
       <p class="card-description">${escapeHTML(description)}</p>
-      <div class="card-health"><div><span>Project health</span><strong>${health.score}%</strong></div><div class="health-track"><i style="width:${health.score}%"></i></div></div>
+      <div class="card-health"><div><span>Project health</span><strong>${health.score}%</strong></div><progress class="health-track" value="${health.score}" max="100" aria-label="Project health"></progress></div>
       <div class="card-tags">${technologies.map(item => `<span>${escapeHTML(item.name)}</span>`).join('')}</div>
       <div class="card-footer"><span class="stack-label">${escapeHTML(healthLabel(health.score))}</span>${domain ? `<span class="card-domain">${escapeHTML(domain)}</span>` : ''}</div>
       <div class="card-actions"><button type="button" data-action="open" aria-label="Open project">↗</button><button type="button" data-action="edit" aria-label="Edit project">✎</button><button type="button" data-action="delete" aria-label="Delete project">×</button></div>
-      ${deployment?.url ? `<a class="card-hit-link" href="${escapeHTML(normalizeURL(deployment.url))}" target="_blank" rel="noopener noreferrer" aria-label="Open ${escapeHTML(project.name)} deployment"></a>` : ''}
+      ${deployment?.url ? `<a class="card-hit-link" ${safeHref(deployment.url)} target="_blank" rel="noopener noreferrer" aria-label="Open ${escapeHTML(project.name)} deployment"></a>` : ''}
     </article>`;
   }).join('');
 }
@@ -852,15 +868,15 @@ function renderDetail(project) {
   refs.detailHeader.innerHTML = `<div class="detail-title-wrap"><div class="detail-kicker"><span class="status-pill ${escapeHTML(statusTone(project.status))}"><i></i>${statusName(project.status)}</span><span class="detail-slash">/</span>${escapeHTML(project.category || 'Project')}</div><h1>${escapeHTML(project.name)}</h1><p>${escapeHTML(project.description || 'No description added yet.')}</p><div class="detail-meta"><span>Updated ${relativeDate(project.updatedAt)}</span><span>Created ${relativeDate(project.createdAt)}</span><span>Health ${health.score}%</span></div></div><div class="detail-actions"><button class="button button-quiet" id="detailEditButton" type="button">Edit project</button><button class="button button-danger" id="detailDeleteButton" type="button">Delete</button></div>`;
 
   const domains = project.domains?.map(item => `<div class="resource-card"><div><strong>${escapeHTML(item.hostname)}</strong><p>${escapeHTML([item.registrar, item.dnsProvider].filter(Boolean).join(' · ') || 'Provider details not added')}</p></div><div class="resource-meta">${item.expiresAt ? `<span>Expires ${escapeHTML(item.expiresAt)}</span>` : '<span>No expiry date</span>'}${item.autoRenew ? '<span>Auto-renew on</span>' : ''}</div></div>`).join('');
-  const deployments = project.deployments?.map(item => `<div class="resource-card"><div><strong>${escapeHTML(item.name || 'Deployment')}</strong><p>${escapeHTML([item.provider, item.environment, item.status].filter(Boolean).join(' · ') || 'Provider details not added')}</p>${item.repository ? `<p class="mono-line">${escapeHTML(item.repository)}${item.branch ? ` · ${escapeHTML(item.branch)}` : ''}</p>` : ''}</div><div class="resource-meta">${item.url ? `<a href="${escapeHTML(normalizeURL(item.url))}" target="_blank" rel="noopener noreferrer">Open ↗</a>` : '<span>No URL</span>'}</div></div>`).join('');
-  const databases = project.databases?.map(item => `<div class="resource-card"><div><strong>${escapeHTML(item.name || 'Database')}</strong><p>${escapeHTML([item.provider, item.databaseType, item.environment].filter(Boolean).join(' · ') || 'Database details not added')}</p></div><div class="resource-meta">${item.url ? `<a href="${escapeHTML(normalizeURL(item.url))}" target="_blank" rel="noopener noreferrer">Console ↗</a>` : '<span>Internal connection</span>'}</div></div>`).join('');
-  const links = project.links?.map(item => `<a class="link-card" href="${escapeHTML(normalizeURL(item.url))}" target="_blank" rel="noopener noreferrer"><span>${escapeHTML(item.label)}</span><small>${escapeHTML(item.url)}</small><b>↗</b></a>`).join('');
+  const deployments = project.deployments?.map(item => `<div class="resource-card"><div><strong>${escapeHTML(item.name || 'Deployment')}</strong><p>${escapeHTML([item.provider, item.environment, item.status].filter(Boolean).join(' · ') || 'Provider details not added')}</p>${item.repository ? `<p class="mono-line">${escapeHTML(item.repository)}${item.branch ? ` · ${escapeHTML(item.branch)}` : ''}</p>` : ''}</div><div class="resource-meta">${item.url ? `<a ${safeHref(item.url)} target="_blank" rel="noopener noreferrer">Open ↗</a>` : '<span>No URL</span>'}</div></div>`).join('');
+  const databases = project.databases?.map(item => `<div class="resource-card"><div><strong>${escapeHTML(item.name || 'Database')}</strong><p>${escapeHTML([item.provider, item.databaseType, item.environment].filter(Boolean).join(' · ') || 'Database details not added')}</p></div><div class="resource-meta">${item.url ? `<a ${safeHref(item.url)} target="_blank" rel="noopener noreferrer">Console ↗</a>` : '<span>Internal connection</span>'}</div></div>`).join('');
+  const links = project.links?.map(item => `<a class="link-card" ${safeHref(item.url)} target="_blank" rel="noopener noreferrer"><span>${escapeHTML(item.label)}</span><small>${escapeHTML(item.url)}</small><b>↗</b></a>`).join('');
   const tags = project.technologies?.map(item => `<span class="technology-chip">${escapeHTML(item.name)}<small>${escapeHTML(item.kind || 'other')}</small></span>`).join('');
   const activity = (project.activities || []).slice(0, 24).map(item => `<div class="activity-item"><div class="activity-dot"></div><div><strong>${escapeHTML(item.action)}</strong><p>${escapeHTML(item.detail || '')}</p></div><time>${relativeTime(item.createdAt)}</time></div>`).join('');
   const healthChecks = [
     ['Description', Boolean(project.description?.trim())], ['Category', Boolean(project.category?.trim())], ['Technology', Boolean(project.technologies?.length)], ['Domains', Boolean(project.domains?.length)], ['Deployments', Boolean(project.deployments?.length)], ['Databases', Boolean(project.databases?.length)], ['Links', Boolean(project.links?.length)], ['GitHub', Boolean(project.github)], ['Notes', Boolean(project.notes?.trim())],
   ];
-  const healthContent = `<div class="health-hero"><div><span>${healthLabel(health.score)}</span><strong>${health.score}%</strong></div><div class="health-track large"><i style="width:${health.score}%"></i></div></div><div class="health-checks">${healthChecks.map(([label, ok]) => `<div class="health-check ${ok ? 'ok' : ''}"><span>${ok ? '✓' : '·'}</span>${label}</div>`).join('')}</div>`;
+  const healthContent = `<div class="health-hero"><div><span>${healthLabel(health.score)}</span><strong>${health.score}%</strong></div><progress class="health-track large" value="${health.score}" max="100" aria-label="Project health"></progress></div><div class="health-checks">${healthChecks.map(([label, ok]) => `<div class="health-check ${ok ? 'ok' : ''}"><span>${ok ? '✓' : '·'}</span>${label}</div>`).join('')}</div>`;
 
   refs.detailGrid.innerHTML = [
     detailSection('Project health', '00', healthContent, 'health-section'),
@@ -886,7 +902,7 @@ function renderDetail(project) {
 function renderProjectGithub(project) {
   if (project.github) {
     const repo = project.github;
-    return `<div class="github-project-card"><div class="github-project-main"><div class="github-logo">GH</div><div><strong>${escapeHTML(repo.fullName)}</strong><p>${escapeHTML([repo.private ? 'Private' : 'Public', repo.defaultBranch ? `Default: ${repo.defaultBranch}` : ''].filter(Boolean).join(' · '))}</p>${repo.description ? `<p>${escapeHTML(repo.description)}</p>` : ''}</div></div><div class="github-project-actions"><a class="button button-quiet" href="${escapeHTML(repo.htmlUrl)}" target="_blank" rel="noopener noreferrer">Open GitHub ↗</a><button class="button button-quiet" id="detailGithubUnlink" type="button">Unlink</button></div></div>`;
+    return `<div class="github-project-card"><div class="github-project-main"><div class="github-logo">GH</div><div><strong>${escapeHTML(repo.fullName)}</strong><p>${escapeHTML([repo.private ? 'Private' : 'Public', repo.defaultBranch ? `Default: ${repo.defaultBranch}` : ''].filter(Boolean).join(' · '))}</p>${repo.description ? `<p>${escapeHTML(repo.description)}</p>` : ''}</div></div><div class="github-project-actions"><a class="button button-quiet" ${safeHref(repo.htmlUrl)} target="_blank" rel="noopener noreferrer">Open GitHub ↗</a><button class="button button-quiet" id="detailGithubUnlink" type="button">Unlink</button></div></div>`;
   }
   if (!state.github.connected) return `<div class="detail-empty">Connect GitHub to link a repository to this project.</div><button class="button button-primary" type="button" id="detailGithubButton">Connect GitHub <span>→</span></button>`;
   return `<div class="github-unlinked-card"><div><strong>No repository linked.</strong><p>Choose a repository from @${escapeHTML(state.github.connection?.login || 'GitHub')}.</p></div><button class="button button-primary" type="button" id="detailGithubButton">Choose repository <span>→</span></button></div>`;
@@ -915,7 +931,7 @@ function renderGithubIntegration() {
     $('#connectGithubButton')?.addEventListener('click', () => { window.location.href = '/api/integrations/github/connect'; });
     return;
   }
-  refs.githubIntegrationCard.innerHTML = `<article class="integration-card connected"><div class="integration-icon">GH</div><div class="integration-copy"><div class="integration-heading"><div><span class="integration-kicker">GitHub</span><h3>@${escapeHTML(state.github.connection?.login || 'connected')}</h3></div><span class="connected-pill"><i></i>Connected</span></div><p>${state.github.repositoryCount || 0} repositories cached for project linking.</p><div class="integration-actions"><button class="button button-quiet" id="refreshGithubButton" type="button">Refresh repositories</button><button class="button button-quiet" id="disconnectGithubButton" type="button">Disconnect</button></div></div></article>`;
+  refs.githubIntegrationCard.innerHTML = `<article class="integration-card connected"><div class="integration-icon">GH</div><div class="integration-copy"><div class="integration-heading"><div><span class="integration-kicker">GitHub</span><h3>@${escapeHTML(state.github.connection?.login || 'connected')}</h3></div><span class="connected-pill"><i></i>Connected</span></div><p>${escapeHTML(state.github.repositoryCount || 0)} repositories cached for project linking.</p><div class="integration-actions"><button class="button button-quiet" id="refreshGithubButton" type="button">Refresh repositories</button><button class="button button-quiet" id="disconnectGithubButton" type="button">Disconnect</button></div></div></article>`;
   $('#refreshGithubButton')?.addEventListener('click', async () => {
     try {
       await loadGithubRepositories();
@@ -1040,7 +1056,7 @@ function renderAttentionPage() {
   refs.attentionGrid.innerHTML = cards.join('');
 }
 
-function resetRepeaterContainer(selector) { $(selector).innerHTML = ''; }
+function resetRepeaterContainer(selector) { $(selector).replaceChildren(); }
 
 function addDomainField(item = {}) {
   const wrapper = document.createElement('div');

@@ -8,7 +8,7 @@
       var h = document.documentElement;
       var max = (h.scrollHeight - h.clientHeight) || 1;
       var pct = Math.min(100, Math.max(0, (window.scrollY / max) * 100));
-      if(fill) fill.style.width = pct + '%';
+      if(fill) fill.value = pct;
     }
     document.addEventListener('scroll', onScroll, {passive:true});
     onScroll();
@@ -69,7 +69,7 @@
         entries.forEach(function(entry){
           if(!entry.isIntersecting) return;
           fillObserver.unobserve(entry.target);
-          entry.target.style.width = entry.target.getAttribute('data-fill-to');
+          entry.target.value = Number(entry.target.getAttribute('data-fill-to')) || 0;
         });
       }, {threshold:0.4});
       fills.forEach(function(f){ fillObserver.observe(f); });
@@ -96,7 +96,7 @@
       // no IntersectionObserver: reveal everything immediately, counters show final values
       document.querySelectorAll('.reveal, .stagger, .diagram').forEach(function(t){ t.classList.add('in-view'); });
       document.querySelectorAll('[data-count-to]').forEach(function(el){ el.textContent = el.getAttribute('data-count-to'); });
-      document.querySelectorAll('[data-fill-to]').forEach(function(el){ el.style.width = el.getAttribute('data-fill-to'); });
+      document.querySelectorAll('[data-fill-to]').forEach(function(el){ el.value = Number(el.getAttribute('data-fill-to')) || 0; });
       var typedElFallback = document.getElementById('searchTyped');
       if(typedElFallback) typedElFallback.textContent = 'neon';
     }

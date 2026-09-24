@@ -234,7 +234,7 @@ func main() {
 	mux.HandleFunc("/api/integrations/github/status", store.githubStatusHandler)
 	mux.HandleFunc("/api/integrations/github/disconnect", store.githubDisconnectHandler)
 	mux.HandleFunc("/api/github/repositories", store.githubRepositoriesHandler)
-	mux.Handle("/", http.FileServer(http.Dir(".")))
+	mux.Handle("/", publicHandler())
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -342,6 +342,10 @@ func (store *projectStore) vaultHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		if vault.CryptoVersion != 1 {
 			writeError(w, http.StatusBadRequest, errors.New("unsupported vault crypto version"))
+			return
+		}
+		if err := validateVaultRecord(vault); err != nil {
+			writeError(w, http.StatusBadRequest, err)
 			return
 		}
 
@@ -707,22 +711,13 @@ func validateEncryptedProject(project Project) error {
 	if project.EncryptedPayload == nil {
 		return errors.New("encryptedPayload is required")
 	}
-	if strings.TrimSpace(project.EncryptedPayload.Ciphertext) == "" || strings.TrimSpace(project.EncryptedPayload.IV) == "" {
-		return errors.New("encrypted project payload is incomplete")
+
+	version := project.EncryptionVersion
+	if version <= 0 {
+		version = project.EncryptedPayload.Version
 	}
-	if project.EncryptedPayload.Version <= 0 {
-		return errors.New("invalid encrypted payload version")
-	}
-	if project.EncryptionVersion <= 0 {
-		project.EncryptionVersion = project.EncryptedPayload.Version
-	}
-	if project.EncryptionVersion != project.EncryptedPayload.Version {
-		return errors.New("encryption version mismatch")
-	}
-	if len(project.EncryptedPayload.Ciphertext) > 8<<20 {
-		return errors.New("encrypted project payload is too large")
-	}
-	return nil
+
+	return validateEncryptedPayload(project.EncryptedPayload, version)
 }
 
 func encryptedPayloadJSON(payload *EncryptedPayload) (string, error) {
@@ -1233,7 +1228,7 @@ func (store *projectStore) authHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, err := http.DefaultClient.Do(req)
+	response, err := upstreamClient.Do(req)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, err)
 		return
@@ -1253,7 +1248,7 @@ func (store *projectStore) userFromRequest(r *http.Request) (string, bool, error
 		return "", false, err
 	}
 	request.Header.Set("Cookie", r.Header.Get("Cookie"))
-	response, err := http.DefaultClient.Do(request)
+	response, err := upstreamClient.Do(request)
 	if err != nil {
 		return "", false, err
 	}
@@ -1407,7 +1402,7 @@ func (store *projectStore) exchangeGitHubCode(ctx context.Context, code string) 
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := upstreamClient.Do(req)
 	if err != nil {
 		return githubTokenResponse{}, err
 	}
@@ -1652,7 +1647,7 @@ func (store *projectStore) refreshGitHubToken(ctx context.Context, refreshToken 
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := upstreamClient.Do(req)
 	if err != nil {
 		return githubTokenResponse{}, err
 	}
@@ -1678,7 +1673,7 @@ func (store *projectStore) githubJSON(ctx context.Context, accessToken, method, 
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("X-GitHub-Api-Version", "2026-03-10")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := upstreamClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -1952,15 +1947,6 @@ func validateHTTPURL(value string) error {
 	return nil
 }
 
-func decodeJSON(r *http.Request, target any) error {
-	decoder := json.NewDecoder(io.LimitReader(r.Body, 2<<20))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return errors.New("invalid JSON body")
-	}
-	return nil
-}
-
 func cloneProject(project Project) Project {
 	cloned := project
 	if project.Legacy != nil {
@@ -2042,19 +2028,6 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 }
 func writeError(w http.ResponseWriter, status int, err error) {
 	writeJSON(w, status, map[string]string{"error": err.Error()})
-}
-
-func securityHeaders(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		if r.TLS != nil {
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {

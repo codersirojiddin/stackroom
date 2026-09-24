@@ -18,7 +18,7 @@
 <body>
     <div class="grain" aria-hidden="true"></div>
     <div class="scroll-rail">
-        <div class="scroll-fill" id="scrollFill"></div>
+        <progress class="scroll-fill" id="scrollFill" max="100" value="0" aria-label="Page scroll progress"></progress>
     </div>
 
     <nav class="side-nav" aria-label="Section navigation">
@@ -60,7 +60,7 @@
                         <span class="chart-state s-done">Shipped</span>
                         <span class="chart-pct">100%</span>
                     </div>
-                    <div class="chart-track"><span class="chart-fill f-done" style="width:100%;animation-delay:0ms"></span></div>
+                    <div class="chart-track"><span class="chart-fill f-done roadmap-presentation-1"></span></div>
                 </div>
 
                 <div class="chart-row">
@@ -69,7 +69,7 @@
                         <span class="chart-state s-done">Shipped</span>
                         <span class="chart-pct">100%</span>
                     </div>
-                    <div class="chart-track"><span class="chart-fill f-done" style="width:100%;animation-delay:130ms"></span></div>
+                    <div class="chart-track"><span class="chart-fill f-done roadmap-presentation-2"></span></div>
                 </div>
 
                 <div class="chart-row is-current">
@@ -78,7 +78,7 @@
                         <span class="chart-state s-active">Active</span>
                         <span class="chart-pct">~80%</span>
                     </div>
-                    <div class="chart-track"><span class="chart-fill f-active" style="width:80%;animation-delay:260ms"></span></div>
+                    <div class="chart-track"><span class="chart-fill f-active roadmap-presentation-3"></span></div>
                 </div>
                 <p class="chart-here">↑ you are here</p>
 
@@ -88,7 +88,7 @@
                         <span class="chart-state s-future">Planned</span>
                         <span class="chart-pct">0%</span>
                     </div>
-                    <div class="chart-track"><span class="chart-fill" style="width:0%"></span></div>
+                    <div class="chart-track"><span class="chart-fill roadmap-presentation-4"></span></div>
                 </div>
 
                 <div class="chart-row">
@@ -97,7 +97,7 @@
                         <span class="chart-state s-future">Planned</span>
                         <span class="chart-pct">0%</span>
                     </div>
-                    <div class="chart-track"><span class="chart-fill" style="width:0%"></span></div>
+                    <div class="chart-track"><span class="chart-fill roadmap-presentation-5"></span></div>
                 </div>
             </div>
         </div>
@@ -108,7 +108,7 @@
         <section class="section" id="foundation">
             <div class="wrap">
                 <div class="section-head reveal">
-                    <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--done);box-shadow:0 0 0 4px var(--done-soft)"></span>Phase 01–02 · Shipped</p>
+                    <p class="eyebrow"><span class="eyebrow-dot roadmap-presentation-6"></span>Phase 01–02 · Shipped</p>
                     <h2>The first two phases gave every project a real home.</h2>
                     <p class="section-intro">Before this, a project's details lived wherever I'd last left them — a registrar tab, a note to myself, a half-remembered <code>.env</code> file. Phases one and two fixed that: a place to create a project, and a shape rich enough to
                         hold everything that belongs to it.</p>
@@ -192,7 +192,7 @@
                         <div class="widget-label"><span>Project health</span><span>completeness</span></div>
                         <div class="health-hero">
                             <div class="health-hero-top"><span>Healthy</span><strong><span data-count-to="75">0</span>%</strong></div>
-                            <div class="health-track"><i data-fill-to="75%"></i></div>
+                            <progress class="health-track" data-fill-to="75" max="100" value="0" aria-label="Project health"></progress>
                         </div>
                         <div class="health-checks">
                             <div class="health-check ok"><span>✓</span>Description</div>
@@ -291,7 +291,7 @@
         <section class="section" id="next">
             <div class="wrap">
                 <div class="section-head reveal">
-                    <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--future);box-shadow:0 0 0 4px var(--future-soft)"></span>Phase 04 · Planned next</p>
+                    <p class="eyebrow"><span class="eyebrow-dot roadmap-presentation-7"></span>Phase 04 · Planned next</p>
                     <h2>Connecting Stackroom to where the code actually lives.</h2>
                     <p class="section-intro">Once phase three is stable, the next jump is GitHub — pulling real repository activity into each project, and giving it an actual workflow state instead of just a status field.</p>
                 </div>
@@ -310,7 +310,7 @@
           </svg>
                 </div>
 
-                <p class="check-group-label reveal" style="margin-top:44px">Project workflow</p>
+                <p class="check-group-label reveal roadmap-presentation-8">Project workflow</p>
                 <div class="workflow-stepper reveal">
                     <span class="wf-step">Idea</span><span class="wf-arrow">→</span>
                     <span class="wf-step">Planning</span><span class="wf-arrow">→</span>
@@ -320,7 +320,7 @@
                     <span class="wf-step">Archived</span>
                 </div>
 
-                <p class="section-intro reveal" style="margin-top:34px">Command palette 2.0 adds actions like <em>Open GitHub</em>, <em>Change project status</em> and <em>Search Neon projects</em> — still planned, not built.</p>
+                <p class="section-intro reveal roadmap-presentation-9">Command palette 2.0 adds actions like <em>Open GitHub</em>, <em>Change project status</em> and <em>Search Neon projects</em> — still planned, not built.</p>
             </div>
         </section>
 
@@ -328,7 +328,7 @@
         <section class="section" id="horizon">
             <div class="wrap">
                 <div class="section-head reveal">
-                    <p class="eyebrow"><span class="eyebrow-dot" style="background:var(--future);box-shadow:0 0 0 4px var(--future-soft)"></span>Phase 05 · The long game</p>
+                    <p class="eyebrow"><span class="eyebrow-dot roadmap-presentation-10"></span>Phase 05 · The long game</p>
                     <h2>Watching the whole stack, not just the record of it.</h2>
                     <p class="section-intro">This is where Stackroom stops being a list and starts being a lookout — checking on the actual infrastructure behind every project instead of waiting for me to notice something's wrong.</p>
                 </div>
@@ -351,7 +351,7 @@
           </svg>
                 </div>
 
-                <div class="tag-row reveal" style="margin-top:36px">
+                <div class="tag-row reveal roadmap-presentation-11">
                     <span class="tag">SSL monitoring</span>
                     <span class="tag">Domain expiration alerts</span>
                     <span class="tag">Deployment health</span>
@@ -403,8 +403,8 @@
     <footer class="footer">
         <div class="wrap footer-inner">
             <div class="brand-lockup">
-                <div class="brand-mark" style="width:30px;height:30px;font-size:13px;border-radius:9px;">S</div>
-                <p class="brand-name" style="font-size:14px;">stackroom</p>
+                <div class="brand-mark roadmap-presentation-12">S</div>
+                <p class="brand-name roadmap-presentation-13">stackroom</p>
             </div>
             <p class="footer-focus">Right now: <b>finish &amp; stabilize phase 03</b>, then GitHub and the developer workflow. Built solo · 100% English.</p>
         </div>
