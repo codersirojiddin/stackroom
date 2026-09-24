@@ -31,6 +31,7 @@ a { color: inherit; }
 .sidebar { position: sticky; top: 0; height: 100vh; padding: 30px 22px 24px; display: flex; flex-direction: column; background: rgba(239, 235, 225, .78); border-right: 1px solid var(--line); backdrop-filter: blur(16px); }
 .brand-lockup { display: flex; align-items: center; gap: 12px; }
 .brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: var(--ink); color: var(--paper); font-weight: 700; font-size: 17px; }
+.brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
 .brand-name { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.04em; }
 .brand-caption { margin: 1px 0 0; color: var(--muted); font: 500 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .primary-nav { margin-top: 45px; display: grid; gap: 6px; }

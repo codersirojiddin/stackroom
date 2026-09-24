@@ -10,6 +10,12 @@ const state = {
   github: { connected: false, configured: false, connection: null, repositoryCount: 0 },
   githubRepositories: [],
   githubPickerProject: null,
+  vault: {
+    exists: false,
+    record: null,
+    masterKey: null,
+    unlocked: false,
+  },
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -149,6 +155,322 @@ async function api(path, options = {}) {
   return payload;
 }
 
+function ensureVaultUI() {
+  if ($('#privacyVaultBackdrop')) return;
+
+  const style = document.createElement('style');
+  style.id = 'privacyVaultStyles';
+  style.textContent = `
+    .privacy-vault-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(18, 18, 16, .58);
+      backdrop-filter: blur(12px);
+    }
+    .privacy-vault-backdrop[hidden] { display: none; }
+    .privacy-vault-card {
+      width: min(520px, 100%);
+      border: 1px solid rgba(24, 24, 21, .16);
+      border-radius: 22px;
+      background: #f6f3ec;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, .24);
+      padding: 28px;
+      color: #181815;
+    }
+    .privacy-vault-kicker {
+      margin: 0 0 10px;
+      font: 500 11px/1.2 "DM Mono", monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #2f7651;
+    }
+    .privacy-vault-card h2 {
+      margin: 0;
+      font: 600 30px/1.05 "Space Grotesk", sans-serif;
+      letter-spacing: -.035em;
+    }
+    .privacy-vault-copy {
+      margin: 14px 0 20px;
+      color: rgba(24,24,21,.68);
+      line-height: 1.55;
+    }
+    .privacy-vault-notice {
+      margin: 0 0 18px;
+      padding: 12px 14px;
+      border: 1px solid rgba(47,118,81,.20);
+      border-radius: 12px;
+      background: rgba(47,118,81,.06);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .privacy-vault-field {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .privacy-vault-field input {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(24,24,21,.18);
+      border-radius: 12px;
+      background: rgba(255,255,255,.55);
+      padding: 13px 14px;
+      color: #181815;
+      font: inherit;
+      outline: none;
+    }
+    .privacy-vault-field input:focus {
+      border-color: rgba(47,118,81,.65);
+      box-shadow: 0 0 0 3px rgba(47,118,81,.10);
+    }
+    .privacy-vault-error {
+      margin: 12px 0 0;
+      color: #a1362f;
+      font-size: 13px;
+    }
+    .privacy-vault-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .privacy-vault-submit {
+      min-width: 150px;
+    }
+  `;
+  document.head.appendChild(style);
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'privacyVaultBackdrop';
+  backdrop.className = 'privacy-vault-backdrop';
+  backdrop.hidden = true;
+  backdrop.innerHTML = `
+    <section class="privacy-vault-card" role="dialog" aria-modal="true" aria-labelledby="privacyVaultTitle">
+      <p class="privacy-vault-kicker">Private vault</p>
+      <h2 id="privacyVaultTitle">Unlock your workspace.</h2>
+      <p class="privacy-vault-copy" id="privacyVaultCopy"></p>
+      <div class="privacy-vault-notice" id="privacyVaultNotice"></div>
+      <form id="privacyVaultForm">
+        <label class="privacy-vault-field">
+          Vault passphrase
+          <input id="privacyVaultPassphrase" type="password" required />
+        </label>
+        <label class="privacy-vault-field" id="privacyVaultConfirmField" hidden>
+          Confirm passphrase
+          <input id="privacyVaultConfirm" type="password" />
+        </label>
+        <p class="privacy-vault-error" id="privacyVaultError" hidden></p>
+        <div class="privacy-vault-actions">
+          <button class="button button-primary privacy-vault-submit" id="privacyVaultSubmit" type="submit">Unlock vault <span>→</span></button>
+        </div>
+      </form>
+    </section>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function requestVaultPassphrase(mode = 'unlock') {
+  ensureVaultUI();
+
+  const backdrop = $('#privacyVaultBackdrop');
+  const form = $('#privacyVaultForm');
+  const title = $('#privacyVaultTitle');
+  const copy = $('#privacyVaultCopy');
+  const notice = $('#privacyVaultNotice');
+  const passphraseInput = $('#privacyVaultPassphrase');
+  const confirmField = $('#privacyVaultConfirmField');
+  const confirmInput = $('#privacyVaultConfirm');
+  const error = $('#privacyVaultError');
+  const submit = $('#privacyVaultSubmit');
+
+  const setup = mode === 'setup';
+  title.textContent = setup ? 'Create your private vault.' : 'Unlock your private vault.';
+  copy.textContent = setup
+    ? 'Your project content will be encrypted in this browser before it is sent to Stackroom.'
+    : 'Enter your vault passphrase to decrypt your project content locally in this browser.';
+  notice.textContent = setup
+    ? 'Stackroom never receives this passphrase and cannot recover it. If you lose it, encrypted project content cannot be recovered.'
+    : 'Your passphrase stays in this browser session and is never sent to the Stackroom server.';
+  confirmField.hidden = !setup;
+  confirmInput.required = setup;
+  passphraseInput.autocomplete = setup ? 'new-password' : 'current-password';
+  confirmInput.autocomplete = 'new-password';
+  submit.innerHTML = setup ? 'Create vault <span>→</span>' : 'Unlock vault <span>→</span>';
+  error.hidden = true;
+  error.textContent = '';
+  passphraseInput.value = '';
+  confirmInput.value = '';
+  backdrop.hidden = false;
+  document.body.classList.add('modal-open');
+
+  return new Promise(resolve => {
+    form.onsubmit = event => {
+      event.preventDefault();
+      const passphrase = passphraseInput.value;
+
+      if (setup && passphrase.length < 12) {
+        error.textContent = 'Use at least 12 characters for your vault passphrase.';
+        error.hidden = false;
+        return;
+      }
+      if (setup && passphrase !== confirmInput.value) {
+        error.textContent = 'The passphrases do not match.';
+        error.hidden = false;
+        return;
+      }
+
+      error.hidden = true;
+      resolve({
+        passphrase,
+        close() {
+          backdrop.hidden = true;
+          document.body.classList.remove('modal-open');
+          form.onsubmit = null;
+        },
+        showError(message) {
+          error.textContent = message;
+          error.hidden = false;
+          passphraseInput.select();
+        },
+      });
+    };
+
+    setTimeout(() => passphraseInput.focus(), 0);
+  });
+}
+
+async function initializeVault() {
+  if (!window.StackroomCrypto) throw new Error('Privacy engine is unavailable.');
+
+  const status = await api('/api/vault');
+  state.vault.exists = Boolean(status?.exists);
+  state.vault.record = status?.vault || null;
+
+  if (!state.vault.exists) {
+    const prompt = await requestVaultPassphrase('setup');
+    try {
+      const created = await StackroomCrypto.createVault(prompt.passphrase);
+      await api('/api/vault', {
+        method: 'POST',
+        body: JSON.stringify(created.vaultRecord),
+      });
+
+      state.vault.exists = true;
+      state.vault.record = created.vaultRecord;
+      state.vault.masterKey = created.masterKey;
+      state.vault.unlocked = true;
+      prompt.close();
+      showToast('Private vault created.');
+      return;
+    } catch (error) {
+      prompt.showError(error.message || 'Unable to create the private vault.');
+      throw error;
+    }
+  }
+
+  while (!state.vault.unlocked) {
+    const prompt = await requestVaultPassphrase('unlock');
+    try {
+      const masterKey = await StackroomCrypto.unlockVault(prompt.passphrase, state.vault.record);
+      state.vault.masterKey = masterKey;
+      state.vault.unlocked = true;
+      prompt.close();
+      showToast('Private vault unlocked.');
+    } catch (error) {
+      prompt.showError('Incorrect passphrase or the vault record is damaged.');
+    }
+  }
+}
+
+function projectPrivateData(project = {}) {
+  return {
+    name: String(project.name || ''),
+    slug: String(project.slug || ''),
+    description: String(project.description || ''),
+    status: project.status || 'active',
+    category: String(project.category || ''),
+    priority: project.priority || 'normal',
+    technologies: Array.isArray(project.technologies) ? project.technologies : [],
+    domains: Array.isArray(project.domains) ? project.domains : [],
+    deployments: Array.isArray(project.deployments) ? project.deployments : [],
+    databases: Array.isArray(project.databases) ? project.databases : [],
+    links: Array.isArray(project.links) ? project.links : [],
+    notes: String(project.notes || ''),
+    activities: Array.isArray(project.activities) ? project.activities.slice(0, 24) : [],
+  };
+}
+
+function hydrateEncryptedProject(record, privateData) {
+  return {
+    id: record.id,
+    ...projectPrivateData(privateData),
+    github: record.github || null,
+    createdAt: record.createdAt || privateData.createdAt || '',
+    updatedAt: record.updatedAt || privateData.updatedAt || '',
+    isEncrypted: true,
+    encryptionVersion: record.encryptionVersion || 1,
+  };
+}
+
+async function decryptProjectRecord(record) {
+  if (!record?.isEncrypted) return record;
+  if (!state.vault.masterKey) throw new Error('Private vault is locked.');
+  if (!record.encryptedPayload) throw new Error('Encrypted project payload is missing.');
+
+  const privateData = await StackroomCrypto.decryptJSON(
+    state.vault.masterKey,
+    record.encryptedPayload
+  );
+
+  return hydrateEncryptedProject(record, privateData);
+}
+
+async function encryptedProjectRequest(project) {
+  if (!state.vault.masterKey) throw new Error('Private vault is locked.');
+
+  const encryptedPayload = await StackroomCrypto.encryptJSON(
+    state.vault.masterKey,
+    projectPrivateData(project)
+  );
+
+  return {
+    isEncrypted: true,
+    encryptionVersion: encryptedPayload.version,
+    encryptedPayload,
+  };
+}
+
+async function migrateLegacyProjects() {
+  const legacyProjects = state.projects.filter(project => !project.isEncrypted && project.id && !String(project.id).startsWith('local-'));
+  if (!legacyProjects.length) return;
+
+  let migrated = 0;
+
+  for (const project of legacyProjects) {
+    const requestBody = await encryptedProjectRequest(project);
+    const record = await api(`/api/projects/${encodeURIComponent(project.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(requestBody),
+    });
+
+    const migratedProject = hydrateEncryptedProject(record, project);
+    const index = state.projects.findIndex(item => item.id === project.id);
+    if (index >= 0) state.projects[index] = migratedProject;
+    if (state.currentProject?.id === project.id) state.currentProject = migratedProject;
+    migrated += 1;
+  }
+
+  if (migrated) {
+    showToast(`${migrated} existing ${migrated === 1 ? 'project was' : 'projects were'} encrypted.`);
+  }
+}
+
+
 function setPage(page) {
   refs.projectsView.hidden = page !== 'projects';
   refs.detailView.hidden = page !== 'detail';
@@ -181,9 +503,6 @@ async function loadSession() {
       ? `/api/auth/get-session?neon_auth_session_verifier=${encodeURIComponent(verifier)}`
       : '/api/auth/get-session';
 
-    // Neon Auth returns to the app with a one-time session verifier after OAuth.
-    // The verifier must be forwarded to /get-session so Neon Auth can exchange it
-    // for the normal application session cookie.
     const payload = await api(sessionPath);
 
     if (payload?.user && payload?.session) {
@@ -196,15 +515,30 @@ async function loadSession() {
       }
 
       enterApp();
-      await loadProjects();
+
+      try {
+        await initializeVault();
+        await loadProjects();
+      } catch (error) {
+        console.error(error);
+        showToast(error.message || 'Unable to unlock the private workspace.');
+      }
+
       const githubStatus = new URLSearchParams(window.location.search).get('github');
-      if (githubStatus === 'connected') { showToast('GitHub connected.'); history.replaceState({}, '', window.location.pathname); }
-      if (githubStatus === 'error') { showToast('GitHub connection failed. Please check the integration settings.'); history.replaceState({}, '', window.location.pathname); }
+      if (githubStatus === 'connected') {
+        showToast('GitHub connected.');
+        history.replaceState({}, '', window.location.pathname);
+      }
+      if (githubStatus === 'error') {
+        showToast('GitHub connection failed. Please check the integration settings.');
+        history.replaceState({}, '', window.location.pathname);
+      }
       return;
     }
   } catch (error) {
     console.error(error);
   }
+
   refs.authGate.hidden = false;
   refs.appShell.hidden = true;
 }
@@ -256,11 +590,30 @@ async function continueWithGoogle() {
 async function loadProjects() {
   try {
     const payload = await api('/api/projects');
-    state.projects = Array.isArray(payload) ? payload : [];
+    const records = Array.isArray(payload) ? payload : [];
+    const projects = [];
+
+    for (const record of records) {
+      if (!record?.isEncrypted) {
+        projects.push(record);
+        continue;
+      }
+
+      try {
+        projects.push(await decryptProjectRecord(record));
+      } catch (error) {
+        console.error('Unable to decrypt project', record?.id, error);
+        showToast('One encrypted project could not be decrypted.');
+      }
+    }
+
+    state.projects = projects;
+    await migrateLegacyProjects();
   } catch (error) {
-    state.projects = seedPreview;
-    showToast(`Preview mode: ${error.message}`);
+    state.projects = [];
+    showToast(`Unable to load projects: ${error.message}`);
   }
+
   renderDashboard();
 }
 
@@ -483,7 +836,11 @@ function renderGithubRepositories() {
     refs.githubRepoList.innerHTML = '<div class="detail-empty">No repositories found.</div>';
     return;
   }
-  refs.githubRepoList.innerHTML = state.githubRepositories.map(repo => `<button class="github-repo-item" type="button" data-repository-id="${escapeHTML(repo.id)}" ${repo.linkedProjectID && repo.linkedProjectID !== state.githubPickerProject?.id ? 'disabled' : ''}><div class="github-repo-mark">${repo.private ? 'P' : 'R'}</div><span><strong>${escapeHTML(repo.fullName)}</strong><small>${escapeHTML(repo.description || (repo.defaultBranch ? `Default branch: ${repo.defaultBranch}` : ''))}</small></span><b>${repo.linkedProjectID === state.githubPickerProject?.id ? 'Linked' : repo.linkedProjectID ? `Used by ${escapeHTML(repo.linkedProjectName || 'another project')}` : 'Link →'}</b></button>`).join('');
+  refs.githubRepoList.innerHTML = state.githubRepositories.map(repo => {
+    const linkedProject = state.projects.find(project => project.id === repo.linkedProjectID);
+    const linkedProjectName = linkedProject?.name || 'another project';
+    return `<button class="github-repo-item" type="button" data-repository-id="${escapeHTML(repo.id)}" ${repo.linkedProjectID && repo.linkedProjectID !== state.githubPickerProject?.id ? 'disabled' : ''}><div class="github-repo-mark">${repo.private ? 'P' : 'R'}</div><span><strong>${escapeHTML(repo.fullName)}</strong><small>${escapeHTML(repo.description || (repo.defaultBranch ? `Default branch: ${repo.defaultBranch}` : ''))}</small></span><b>${repo.linkedProjectID === state.githubPickerProject?.id ? 'Linked' : repo.linkedProjectID ? `Used by ${escapeHTML(linkedProjectName)}` : 'Link →'}</b></button>`;
+  }).join('');
 }
 
 async function openGithubPicker(project) {
@@ -595,11 +952,21 @@ function collectRows(containerSelector, fields) {
   }))).filter(item => Object.entries(item).some(([key, value]) => key === 'autoRenew' ? value : Boolean(value)));
 }
 
+function localSlugify(value = '') {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function formToProject() {
   const fd = new FormData(refs.projectForm);
   const technologyNames = String(fd.get('technologies') || '').split(',').map(name => name.trim()).filter(Boolean);
+  const name = String(fd.get('name') || '').trim();
   return {
-    name: String(fd.get('name') || '').trim(),
+    name,
+    slug: localSlugify(name),
     description: String(fd.get('description') || '').trim(),
     status: String(fd.get('status') || 'active'),
     priority: String(fd.get('priority') || 'normal'),
@@ -658,32 +1025,62 @@ function closeProjectModal() {
 async function saveProject(event) {
   event.preventDefault();
   refs.formError.hidden = true;
+
   const project = formToProject();
-  if (!project.name) { refs.formError.textContent = 'Project name is required.'; refs.formError.hidden = false; return; }
+  if (!project.name) {
+    refs.formError.textContent = 'Project name is required.';
+    refs.formError.hidden = false;
+    return;
+  }
+
+  if (!state.vault.unlocked || !state.vault.masterKey) {
+    refs.formError.textContent = 'Unlock your private vault before saving projects.';
+    refs.formError.hidden = false;
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  if (state.editing && state.currentProject) {
+    project.slug = state.currentProject.slug || project.slug;
+    project.activities = [
+      { action: 'updated', detail: 'Project details updated.', createdAt: now },
+      ...(state.currentProject.activities || []),
+    ].slice(0, 24);
+  } else {
+    project.activities = [
+      { action: 'created', detail: 'Project created.', createdAt: now },
+    ];
+  }
+
   refs.saveProjectButton.disabled = true;
+
   try {
-    const saved = state.editing && state.currentProject
-      ? await api(`/api/projects/${encodeURIComponent(state.currentProject.id)}`, { method: 'PATCH', body: JSON.stringify(project) })
-      : await api('/api/projects', { method: 'POST', body: JSON.stringify(project) });
+    const requestBody = await encryptedProjectRequest(project);
+
+    const record = state.editing && state.currentProject
+      ? await api(`/api/projects/${encodeURIComponent(state.currentProject.id)}`, {
+          method: 'PATCH',
+          body: JSON.stringify(requestBody),
+        })
+      : await api('/api/projects', {
+          method: 'POST',
+          body: JSON.stringify(requestBody),
+        });
+
+    const saved = hydrateEncryptedProject(record, project);
     const index = state.projects.findIndex(item => item.id === saved.id);
-    if (index >= 0) state.projects[index] = saved; else state.projects.unshift(saved);
+
+    if (index >= 0) state.projects[index] = saved;
+    else state.projects.unshift(saved);
+
     state.currentProject = saved;
+    const wasEditing = state.editing;
     closeProjectModal();
     renderDashboard();
-    showToast(state.editing ? 'Project updated.' : 'Project created.');
+    showToast(wasEditing ? 'Project encrypted and updated.' : 'Project encrypted and created.');
     renderDetail(saved);
   } catch (error) {
-    if (error.message.includes('Failed to fetch')) {
-      const fallback = { ...project, id: state.currentProject?.id || `local-${Date.now()}`, activities: [{ action: state.editing ? 'updated' : 'created', detail: state.editing ? 'Project details updated.' : 'Project created.', createdAt: new Date().toISOString() }], createdAt: state.currentProject?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
-      if (state.editing) state.projects = state.projects.map(item => item.id === fallback.id ? fallback : item);
-      else state.projects.unshift(fallback);
-      state.currentProject = fallback;
-      closeProjectModal();
-      renderDashboard();
-      renderDetail(fallback);
-      showToast('Saved in local preview mode.');
-      return;
-    }
     refs.formError.textContent = error.message;
     refs.formError.hidden = false;
   } finally {
@@ -748,6 +1145,9 @@ function renderCommandItems() {
 async function signOut() {
   try { await api('/api/auth/sign-out', { method: 'POST', body: '{}' }); } catch (error) { console.error(error); }
   state.user = null;
+  state.vault = { exists: false, record: null, masterKey: null, unlocked: false };
+  state.projects = [];
+  state.currentProject = null;
   refs.profileMenu.hidden = true;
   refs.appShell.hidden = true;
   refs.authGate.hidden = false;
