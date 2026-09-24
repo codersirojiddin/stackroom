@@ -134,7 +134,7 @@ em {
     pointer-events: none;
     opacity: .04;
     z-index: 5;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+    background-image: url("/assets/roadmap-noise.svg");
 }
 
 .scroll-rail {
@@ -148,10 +148,17 @@ em {
 }
 
 .scroll-fill {
+    appearance: none;
+    display: block;
+    width: 100%;
     height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--done), var(--active), var(--future));
+    border: 0;
+    background: transparent;
 }
+
+.scroll-fill::-webkit-progress-bar { background: var(--line); }
+.scroll-fill::-webkit-progress-value { background: linear-gradient(90deg, var(--done), var(--active), var(--future)); }
+.scroll-fill::-moz-progress-bar { background: linear-gradient(90deg, var(--done), var(--active), var(--future)); }
 
 .side-nav {
     position: fixed;
@@ -967,20 +974,19 @@ em {
 }
 
 .health-track {
+    appearance: none;
+    display: block;
+    width: 100%;
     height: 8px;
+    border: 0;
     border-radius: 99px;
     background: var(--paper-2);
     overflow: hidden;
 }
 
-.health-track i {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--active);
-    width: 0%;
-    transition: width 1s cubic-bezier(.2, .7, .2, 1);
-}
+.health-track::-webkit-progress-bar { background: var(--paper-2); border-radius: 99px; }
+.health-track::-webkit-progress-value { background: var(--active); border-radius: 99px; transition: width 1s cubic-bezier(.2, .7, .2, 1); }
+.health-track::-moz-progress-bar { background: var(--active); border-radius: 99px; }
 
 .health-checks {
     margin-top: 16px;
@@ -1520,3 +1526,17 @@ em {
 a {
     color: inherit;
 }
+/* Fixed presentation under the site CSP. */
+.roadmap-presentation-1 { width:100%;animation-delay:0ms }
+.roadmap-presentation-2 { width:100%;animation-delay:130ms }
+.roadmap-presentation-3 { width:80%;animation-delay:260ms }
+.roadmap-presentation-4 { width:0% }
+.roadmap-presentation-5 { width:0% }
+.roadmap-presentation-6 { background:var(--done);box-shadow:0 0 0 4px var(--done-soft) }
+.roadmap-presentation-7 { background:var(--future);box-shadow:0 0 0 4px var(--future-soft) }
+.roadmap-presentation-8 { margin-top:44px }
+.roadmap-presentation-9 { margin-top:34px }
+.roadmap-presentation-10 { background:var(--future);box-shadow:0 0 0 4px var(--future-soft) }
+.roadmap-presentation-11 { margin-top:36px }
+.roadmap-presentation-12 { width:30px;height:30px;font-size:13px;border-radius:9px; }
+.roadmap-presentation-13 { font-size:14px; }

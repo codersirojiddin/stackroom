@@ -5,12 +5,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f4f1ea" />
-    <meta name="description" content="Stackroom — a private archive for your software projects, domains, deployments, databases and links." />
+    <meta name="description"
+        content="Stackroom — a private archive for your software projects, domains, deployments, databases and links." />
     <title>Stackroom — Your build archive</title>
     <link rel="icon" href="/assets/stackroom-logo.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
 </head>
 
@@ -21,7 +24,7 @@
         <section class="auth-panel" aria-labelledby="authTitle">
             <div class="brand-lockup auth-brand">
                 <div class="brand-mark">
-                    <img src="assets/stackroom-mark.png" alt="Stackroom" />
+                    <img src="/assets/stackroom-mark.jpg" alt="Stackroom" />
                 </div>
                 <div>
                     <p class="brand-name">stackroom</p>
@@ -30,20 +33,28 @@
             </div>
             <p class="eyebrow">Private workspace <span class="eyebrow-line"></span></p>
             <h1 id="authTitle">Your builds,<br /><em>kept close.</em></h1>
-            <p class="auth-copy">One place for the projects, domains, deployments and small details you do not want to lose.</p>
+            <p class="auth-copy">One place for the projects, domains, deployments and small details you do not want to
+                lose.</p>
             <div class="auth-tabs">
                 <button class="auth-tab active" type="button" data-auth-mode="signin">Sign in</button>
                 <button class="auth-tab" type="button" data-auth-mode="signup">Create account</button>
             </div>
             <form id="authForm">
-                <label class="field-label auth-name-field" hidden>Name<input name="name" type="text" placeholder="Your name" autocomplete="name" /></label>
-                <label class="field-label">Email<input name="email" type="email" placeholder="you@example.com" autocomplete="email" required /></label>
-                <label class="field-label">Password<input name="password" type="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required /></label>
+                <label class="field-label auth-name-field" hidden>Name<input name="name" type="text"
+                        placeholder="Your name" autocomplete="name" /></label>
+                <label class="field-label">Email<input name="email" type="email" placeholder="you@example.com"
+                        autocomplete="email" required /></label>
+                <label class="field-label">Password<input name="password" type="password"
+                        placeholder="At least 8 characters" autocomplete="current-password" minlength="8"
+                        required /></label>
                 <p class="auth-error" id="authError" role="alert" hidden></p>
-                <button class="button button-primary auth-submit" type="submit" id="authSubmit">Sign in <span>→</span></button>
+                <button class="button button-primary auth-submit" type="submit" id="authSubmit">Sign in
+                    <span>→</span></button>
             </form>
+            <button class="button button-quiet" id="retrySignOutButton" type="button" hidden>Retry sign out</button>
             <div class="auth-divider"><span>or continue with</span></div>
-            <button class="button google-button" id="googleButton" type="button"><span class="google-g">G</span> Google</button>
+            <button class="button google-button" id="googleButton" type="button"><span class="google-g">G</span>
+                Google</button>
             <p class="auth-footnote">Authentication is managed by Neon Auth.</p>
         </section>
     </div>
@@ -52,7 +63,7 @@
         <aside class="sidebar">
             <div class="brand-lockup">
                 <div class="brand-mark">
-                    <img src="assets/stackroom-mark.png" alt="Stackroom" />
+                    <img src="/assets/stackroom-mark.jpg" alt="Stackroom" />
                 </div>
                 <div>
                     <p class="brand-name">stackroom</p>
@@ -61,10 +72,14 @@
             </div>
 
             <nav class="primary-nav" aria-label="Primary navigation">
-                <button class="nav-item active" type="button" data-nav="projects"><span class="nav-icon">◫</span> Projects <span class="nav-count" id="projectCount">0</span></button>
-                <button class="nav-item" type="button" data-nav="domains"><span class="nav-icon">@</span> Domains</button>
-                <button class="nav-item" type="button" data-nav="attention"><span class="nav-icon">!</span> Attention</button>
-                <button class="nav-item" type="button" data-nav="integrations"><span class="nav-icon">↗</span> Integrations</button>
+                <button class="nav-item active" type="button" data-nav="projects"><span class="nav-icon">◫</span>
+                    Projects <span class="nav-count" id="projectCount">0</span></button>
+                <button class="nav-item" type="button" data-nav="domains"><span class="nav-icon">@</span>
+                    Domains</button>
+                <button class="nav-item" type="button" data-nav="attention"><span class="nav-icon">!</span>
+                    Attention</button>
+                <button class="nav-item" type="button" data-nav="integrations"><span class="nav-icon">↗</span>
+                    Integrations</button>
             </nav>
 
             <div class="sidebar-footer">
@@ -75,52 +90,75 @@
 
         <main class="main-content">
             <header class="topbar">
-                <div class="breadcrumbs"><span>Workspace</span><span class="breadcrumb-slash">/</span><strong id="breadcrumbCurrent">All projects</strong></div>
+                <div class="breadcrumbs"><span>Workspace</span><span class="breadcrumb-slash">/</span><strong
+                        id="breadcrumbCurrent">All projects</strong></div>
                 <div class="topbar-actions">
-                    <button class="avatar-button" type="button" id="avatarButton" aria-label="Open profile menu" aria-expanded="false">S</button>
+                    <button class="avatar-button" type="button" id="avatarButton" aria-label="Open profile menu"
+                        aria-expanded="false">S</button>
                     <div class="profile-menu" id="profileMenu" hidden>
                         <p class="profile-name" id="profileName">Signed in</p>
                         <p class="profile-email" id="profileEmail">—</p>
+                        <button type="button" id="lockVaultButton">Lock vault <span>◫</span></button>
                         <button type="button" id="signOutButton">Sign out <span>→</span></button>
                     </div>
                 </div>
             </header>
+
+            <div class="migration-status" id="migrationStatus" hidden>
+                <p id="migrationMessage" role="status" aria-live="polite"></p>
+                <button class="button button-quiet" id="retryMigrationButton" type="button" hidden>Retry migration</button>
+            </div>
 
             <section class="page-view" id="projectsView">
                 <section class="page-heading">
                     <div>
                         <p class="eyebrow">Project index <span class="eyebrow-line"></span></p>
                         <h1>Keep every build<br /><em>within reach.</em></h1>
-                        <p class="heading-copy">A quiet home for the domains, demos, infrastructure and loose details that make your projects real.</p>
+                        <p class="heading-copy">A quiet home for the domains, demos, infrastructure and loose details
+                            that make your projects real.</p>
                     </div>
-                    <button class="button button-primary" id="openCreateButton" type="button"><span class="button-plus">+</span> New project</button>
+                    <button class="button button-primary" id="openCreateButton" type="button"><span
+                            class="button-plus">+</span> New project</button>
                 </section>
 
                 <section class="stats-grid" id="statsGrid" aria-label="Workspace statistics">
-                    <article class="stat-card"><span>Projects</span><strong id="statProjects">0</strong><small>in this workspace</small></article>
-                    <article class="stat-card"><span>Active</span><strong id="statActive">0</strong><small>currently moving</small></article>
-                    <article class="stat-card"><span>Domains</span><strong id="statDomains">0</strong><small>tracked hostnames</small></article>
-                    <article class="stat-card"><span>Deployments</span><strong id="statDeployments">0</strong><small>known environments</small></article>
+                    <article class="stat-card"><span>Projects</span><strong id="statProjects">0</strong><small>in this
+                            workspace</small></article>
+                    <article class="stat-card"><span>Active</span><strong id="statActive">0</strong><small>currently
+                            moving</small></article>
+                    <article class="stat-card"><span>Domains</span><strong id="statDomains">0</strong><small>tracked
+                            hostnames</small></article>
+                    <article class="stat-card"><span>Deployments</span><strong
+                            id="statDeployments">0</strong><small>known environments</small></article>
                 </section>
 
                 <section class="insight-strip" aria-label="Workspace insights">
                     <article class="insight-card">
-                        <div><span class="insight-kicker">Expiring soon</span><small>within 45 days</small></div><strong id="insightExpiring">0</strong><span class="insight-arrow">↗</span></article>
+                        <div><span class="insight-kicker">Expiring soon</span><small>within 45 days</small></div><strong
+                            id="insightExpiring">0</strong><span class="insight-arrow">↗</span>
+                    </article>
                     <article class="insight-card">
-                        <div><span class="insight-kicker">Quiet projects</span><small>no update in 60+ days</small></div><strong id="insightStale">0</strong><span class="insight-arrow">↗</span></article>
+                        <div><span class="insight-kicker">Quiet projects</span><small>no update in 60+ days</small>
+                        </div><strong id="insightStale">0</strong><span class="insight-arrow">↗</span>
+                    </article>
                     <article class="insight-card">
-                        <div><span class="insight-kicker">Needs details</span><small>project records under 63%</small></div><strong id="insightIncomplete">0</strong><span class="insight-arrow">↗</span></article>
+                        <div><span class="insight-kicker">Needs details</span><small>project records under 63%</small>
+                        </div><strong id="insightIncomplete">0</strong><span class="insight-arrow">↗</span>
+                    </article>
                 </section>
 
                 <section class="toolbar" aria-label="Project controls">
                     <label class="search-box">
-            <span aria-hidden="true">⌕</span>
-            <input id="searchInput" type="search" placeholder="Search projects, stacks, domains..." autocomplete="off" />
-            <kbd>/</kbd>
-          </label>
+                        <span aria-hidden="true">⌕</span>
+                        <input id="searchInput" type="search" placeholder="Search projects, stacks, domains..."
+                            autocomplete="off" />
+                        <kbd>/</kbd>
+                    </label>
                     <div class="view-controls">
                         <div class="filter-wrap">
-                            <button class="filter-button" id="filterButton" type="button" aria-expanded="false"><span id="filterButtonLabel">All projects</span><span class="filter-chevron">⌄</span></button>
+                            <button class="filter-button" id="filterButton" type="button" aria-expanded="false"><span
+                                    id="filterButtonLabel">All projects</span><span
+                                    class="filter-chevron">⌄</span></button>
                             <div class="filter-menu" id="filterMenu" hidden>
                                 <button type="button" data-filter="all">All projects</button>
                                 <button type="button" data-filter="active">Active</button>
@@ -130,13 +168,16 @@
                             </div>
                         </div>
                         <div class="segmented-control" role="group" aria-label="View mode">
-                            <button class="segmented-button active" type="button" data-view="grid" aria-label="Grid view">▦</button>
-                            <button class="segmented-button" type="button" data-view="list" aria-label="List view">☷</button>
+                            <button class="segmented-button active" type="button" data-view="grid"
+                                aria-label="Grid view">▦</button>
+                            <button class="segmented-button" type="button" data-view="list"
+                                aria-label="List view">☷</button>
                         </div>
                     </div>
                 </section>
 
-                <div class="results-meta"><span id="resultsLabel">0 projects</span><span class="meta-rule"></span><span id="activeFilterLabel">All projects</span></div>
+                <div class="results-meta"><span id="resultsLabel">0 projects</span><span class="meta-rule"></span><span
+                        id="activeFilterLabel">All projects</span></div>
                 <section class="project-grid" id="projectGrid" aria-live="polite"></section>
             </section>
 
@@ -151,7 +192,8 @@
                     <div>
                         <p class="eyebrow">Portfolio index <span class="eyebrow-line"></span></p>
                         <h1>Every domain,<br /><em>in one view.</em></h1>
-                        <p class="heading-copy">A single register for the domains attached to your projects, including ownership details and expiry dates.</p>
+                        <p class="heading-copy">A single register for the domains attached to your projects, including
+                            ownership details and expiry dates.</p>
                     </div>
                 </section>
                 <section class="domains-table" id="domainsTable"></section>
@@ -162,7 +204,8 @@
                     <div>
                         <p class="eyebrow">Workspace signals <span class="eyebrow-line"></span></p>
                         <h1>What needs<br /><em>your attention.</em></h1>
-                        <p class="heading-copy">A lightweight review queue built from the project data you already keep in Stackroom.</p>
+                        <p class="heading-copy">A lightweight review queue built from the project data you already keep
+                            in Stackroom.</p>
                     </div>
                 </section>
                 <section class="attention-grid" id="attentionGrid"></section>
@@ -173,7 +216,8 @@
                     <div>
                         <p class="eyebrow">Connections <span class="eyebrow-line"></span></p>
                         <h1>Your tools,<br /><em>inside Stackroom.</em></h1>
-                        <p class="heading-copy">Connect the services that power your projects. V4 starts with GitHub.</p>
+                        <p class="heading-copy">Connect the services that power your projects. V4 starts with GitHub.
+                        </p>
                     </div>
                 </section>
                 <section class="integration-shell" id="githubIntegrationCard"></section>
@@ -184,71 +228,99 @@
                     <button class="modal-close" id="closeModalButton" type="button" aria-label="Close dialog">×</button>
                     <p class="eyebrow" id="modalEyebrow">New entry <span class="eyebrow-line"></span></p>
                     <h2 id="modalTitle">Add a project.</h2>
-                    <p class="modal-copy">Capture the useful bits now. The rest can be filled in when the project grows.</p>
+                    <p class="modal-copy">Capture the useful bits now. The rest can be filled in when the project grows.
+                    </p>
 
                     <form id="projectForm">
                         <div class="form-section">
-                            <div class="form-section-title"><span>01</span><strong>Basics</strong><small>What is this build?</small></div>
+                            <div class="form-section-title"><span>01</span><strong>Basics</strong><small>What is this
+                                    build?</small></div>
                             <div class="form-stack">
-                                <label class="field-label">Project name <span>*</span><input name="name" type="text" placeholder="e.g. DevSalary" required maxlength="120" /></label>
-                                <label class="field-label">Description<textarea name="description" rows="2" placeholder="What does this project do?"></textarea></label>
+                                <label class="field-label">Project name <span>*</span><input name="name" type="text"
+                                        placeholder="e.g. DevSalary" required maxlength="120" /></label>
+                                <label class="field-label">Description<textarea name="description" rows="2"
+                                        placeholder="What does this project do?"></textarea></label>
                                 <div class="form-row three">
-                                    <label class="field-label">Status<select name="status"><option value="active">Active</option><option value="idea">Idea</option><option value="shipped">Shipped</option><option value="archived">Archived</option></select></label>
-                                    <label class="field-label">Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label>
-                                    <label class="field-label">Category<input name="category" type="text" placeholder="SaaS, portfolio..." /></label>
+                                    <label class="field-label">Status<select name="status">
+                                            <option value="active">Active</option>
+                                            <option value="idea">Idea</option>
+                                            <option value="shipped">Shipped</option>
+                                            <option value="archived">Archived</option>
+                                        </select></label>
+                                    <label class="field-label">Priority<select name="priority">
+                                            <option value="normal">Normal</option>
+                                            <option value="high">High</option>
+                                            <option value="low">Low</option>
+                                        </select></label>
+                                    <label class="field-label">Category<input name="category" type="text"
+                                            placeholder="SaaS, portfolio..." /></label>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-section">
-                            <div class="form-section-title"><span>02</span><strong>Technology</strong><small>The stack behind it</small></div>
+                            <div class="form-section-title"><span>02</span><strong>Technology</strong><small>The stack
+                                    behind it</small></div>
                             <div class="form-stack">
-                                <label class="field-label">Technologies <span class="field-hint">comma separated</span><input name="technologies" type="text" placeholder="Go, PostgreSQL, React, Tailwind" /></label>
+                                <label class="field-label">Technologies <span class="field-hint">comma
+                                        separated</span><input name="technologies" type="text"
+                                        placeholder="Go, PostgreSQL, React, Tailwind" /></label>
                             </div>
                         </div>
 
                         <div class="form-section">
-                            <div class="form-section-title"><span>03</span><strong>Domain</strong><small>Where people find it</small></div>
+                            <div class="form-section-title"><span>03</span><strong>Domain</strong><small>Where people
+                                    find it</small></div>
                             <div class="repeat-list" id="domainsFields"></div>
                             <button type="button" class="add-row" data-add="domain">+ Add domain</button>
                         </div>
 
                         <div class="form-section">
-                            <div class="form-section-title"><span>04</span><strong>Deployment</strong><small>Where it runs</small></div>
+                            <div class="form-section-title"><span>04</span><strong>Deployment</strong><small>Where it
+                                    runs</small></div>
                             <div class="repeat-list" id="deploymentsFields"></div>
                             <button type="button" class="add-row" data-add="deployment">+ Add deployment</button>
                         </div>
 
                         <div class="form-section">
-                            <div class="form-section-title"><span>05</span><strong>Database</strong><small>What stores the data</small></div>
+                            <div class="form-section-title"><span>05</span><strong>Database</strong><small>What stores
+                                    the data</small></div>
                             <div class="repeat-list" id="databasesFields"></div>
                             <button type="button" class="add-row" data-add="database">+ Add database</button>
                         </div>
 
                         <div class="form-section">
-                            <div class="form-section-title"><span>06</span><strong>Links</strong><small>GitHub, Figma, production and more</small></div>
+                            <div class="form-section-title"><span>06</span><strong>Links</strong><small>GitHub, Figma,
+                                    production and more</small></div>
                             <div class="repeat-list" id="linksFields"></div>
                             <button type="button" class="add-row" data-add="link">+ Add link</button>
                         </div>
 
                         <div class="form-section">
-                            <div class="form-section-title"><span>07</span><strong>Notes</strong><small>Context for future you</small></div>
-                            <label class="field-label"><textarea name="notes" rows="4" placeholder="Architecture decisions, next steps, credentials location, things to remember..."></textarea></label>
+                            <div class="form-section-title"><span>07</span><strong>Notes</strong><small>Context for
+                                    future you</small></div>
+                            <label class="field-label"><textarea name="notes" rows="4"
+                                    placeholder="Architecture decisions, next steps, credentials location, things to remember..."></textarea></label>
                         </div>
 
                         <p class="form-error" id="formError" role="alert" hidden></p>
-                        <div class="form-actions"><button class="button button-quiet" id="cancelButton" type="button">Cancel</button><button class="button button-primary" type="submit" id="saveProjectButton">Create project <span>→</span></button></div>
+                        <div class="form-actions"><button class="button button-quiet" id="cancelButton"
+                                type="button">Cancel</button><button class="button button-primary" type="submit"
+                                id="saveProjectButton">Create project <span>→</span></button></div>
                     </form>
                 </section>
             </div>
 
             <div class="modal-backdrop" id="githubPickerBackdrop" hidden>
-                <section class="project-modal github-picker-modal" role="dialog" aria-modal="true" aria-labelledby="githubPickerTitle">
-                    <button class="modal-close" id="closeGithubPickerButton" type="button" aria-label="Close dialog">×</button>
+                <section class="project-modal github-picker-modal" role="dialog" aria-modal="true"
+                    aria-labelledby="githubPickerTitle">
+                    <button class="modal-close" id="closeGithubPickerButton" type="button"
+                        aria-label="Close dialog">×</button>
                     <p class="eyebrow">GitHub <span class="eyebrow-line"></span></p>
                     <h2 id="githubPickerTitle">Link a repository.</h2>
                     <p class="modal-copy">Choose a repository from your connected GitHub account.</p>
-                    <label class="field-label">Search repositories<input id="githubRepoSearch" type="search" placeholder="Search by repository name..." autocomplete="off" /></label>
+                    <label class="field-label">Search repositories<input id="githubRepoSearch" type="search"
+                            placeholder="Search by repository name..." autocomplete="off" /></label>
                     <div class="github-repo-list" id="githubRepoList"></div>
                 </section>
             </div>
@@ -256,13 +328,47 @@
             <div class="command-backdrop" id="commandBackdrop" hidden>
                 <section class="command-palette" role="dialog" aria-modal="true" aria-labelledby="commandTitle">
                     <div class="command-top"><span id="commandTitle">Command</span><kbd>Esc</kbd></div>
-                    <div class="command-search"><span>⌕</span><input id="commandInput" type="search" placeholder="Search actions..." autocomplete="off" /></div>
+                    <div class="command-search"><span>⌕</span><input id="commandInput" type="search"
+                            placeholder="Search actions..." autocomplete="off" /></div>
                     <div class="command-list" id="commandList"></div>
                 </section>
             </div>
 
             <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-            <script src="app.js?v=4.0.0"></script>
+
+        </main>
+    </div>
+
+    <div class="privacy-vault-backdrop" id="privacyVaultBackdrop" hidden>
+        <section class="privacy-vault-card" role="dialog" aria-modal="true" aria-labelledby="privacyVaultTitle"
+            aria-describedby="privacyVaultCopy">
+            <p class="eyebrow">Private vault <span class="eyebrow-line"></span></p>
+            <h2 id="privacyVaultTitle">Your private vault</h2>
+            <p class="privacy-vault-copy" id="privacyVaultCopy" role="status">Checking your vault…</p>
+            <p class="privacy-vault-notice" id="privacyVaultNotice" hidden></p>
+            <form id="privacyVaultForm" novalidate>
+                <div id="privacyVaultFields" hidden>
+                    <label class="field-label">Vault passphrase
+                        <input id="privacyVaultPassphrase" type="password" autocomplete="off" required
+                            spellcheck="false" aria-describedby="privacyVaultHint privacyVaultError" />
+                    </label>
+                    <p class="privacy-vault-hint" id="privacyVaultHint"></p>
+                    <label class="field-label" id="privacyVaultConfirmField" hidden>Confirm passphrase
+                        <input id="privacyVaultConfirm" type="password" autocomplete="off"
+                            spellcheck="false" aria-describedby="privacyVaultError" />
+                    </label>
+                </div>
+                <p class="form-error" id="privacyVaultError" role="alert" hidden></p>
+                <div class="privacy-vault-actions">
+                    <button class="button button-quiet" id="privacyVaultSignOut" type="button">Sign out</button>
+                    <button class="button button-primary" id="privacyVaultSubmit" type="submit" disabled>Checking vault…</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script src="/crypto.js?v=4.1.0"></script>
+    <script src="/app.js?v=4.1.0"></script>
 </body>
 
 </html>
