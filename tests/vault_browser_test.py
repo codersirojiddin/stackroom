@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect, sync_playwright
+from legacy_migration_browser_test import run_migration_checks
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -322,6 +323,7 @@ def run():
                     assert set(data) == {"encryptedPayload", "encryptionVersion", "isEncrypted"}
             assert not errors, errors
             print("PASS create conflict, ciphertext-only requests, no browser persistence or JS errors")
+            run_migration_checks(browser, url, PASSPHRASE)
             browser.close()
     finally:
         server.shutdown()

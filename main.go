@@ -40,26 +40,35 @@ type EncryptedPayload struct {
 }
 
 type Project struct {
-	ID                string            `json:"id"`
-	Name              string            `json:"name"`
-	Slug              string            `json:"slug"`
-	Description       string            `json:"description"`
-	Status            string            `json:"status"`
-	Category          string            `json:"category"`
-	Priority          string            `json:"priority"`
-	Technologies      []Technology      `json:"technologies"`
-	Domains           []Domain          `json:"domains"`
-	Deployments       []Deployment      `json:"deployments"`
-	Databases         []ProjectDB       `json:"databases"`
-	Links             []ProjectLink     `json:"links"`
-	Notes             string            `json:"notes"`
-	Activities        []Activity        `json:"activities"`
-	GitHub            *GitHubRepository `json:"github,omitempty"`
-	EncryptedPayload  *EncryptedPayload `json:"encryptedPayload,omitempty"`
-	EncryptionVersion int               `json:"encryptionVersion,omitempty"`
-	IsEncrypted       bool              `json:"isEncrypted"`
-	CreatedAt         string            `json:"createdAt"`
-	UpdatedAt         string            `json:"updatedAt"`
+	Legacy            *LegacyProjectFields `json:"legacy,omitempty"`
+	MigrationRevision string               `json:"migrationRevision,omitempty"`
+	ID                string               `json:"id"`
+	Name              string               `json:"name"`
+	Slug              string               `json:"slug"`
+	Description       string               `json:"description"`
+	Status            string               `json:"status"`
+	Category          string               `json:"category"`
+	Priority          string               `json:"priority"`
+	Technologies      []Technology         `json:"technologies"`
+	Domains           []Domain             `json:"domains"`
+	Deployments       []Deployment         `json:"deployments"`
+	Databases         []ProjectDB          `json:"databases"`
+	Links             []ProjectLink        `json:"links"`
+	Notes             string               `json:"notes"`
+	Activities        []Activity           `json:"activities"`
+	GitHub            *GitHubRepository    `json:"github,omitempty"`
+	EncryptedPayload  *EncryptedPayload    `json:"encryptedPayload,omitempty"`
+	EncryptionVersion int                  `json:"encryptionVersion,omitempty"`
+	IsEncrypted       bool                 `json:"isEncrypted"`
+	CreatedAt         string               `json:"createdAt"`
+	UpdatedAt         string               `json:"updatedAt"`
+}
+
+// Legacy fields are included in the encrypted snapshot even when richer child records exist.
+type LegacyProjectFields struct {
+	Stack       string `json:"stack"`
+	Domain      string `json:"domain"`
+	DeployedURL string `json:"deployedUrl"`
 }
 
 type VaultRecord struct {
@@ -431,6 +440,10 @@ func (store *projectStore) projectsHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (store *projectStore) projectHandler(w http.ResponseWriter, r *http.Request) {
+	if strings.HasSuffix(r.URL.Path, "/migrate") {
+		store.projectMigrationHandler(w, r)
+		return
+	}
 	if strings.HasSuffix(r.URL.Path, "/github") {
 		store.projectGitHubHandler(w, r)
 		return
@@ -489,6 +502,10 @@ func (store *projectStore) projectHandler(w http.ResponseWriter, r *http.Request
 		}
 
 		if err != nil {
+			if errors.Is(err, errMigrationRequired) || errors.Is(err, errProjectEncrypted) {
+				writeError(w, http.StatusConflict, err)
+				return
+			}
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeError(w, http.StatusNotFound, errors.New("project not found"))
 				return
@@ -611,14 +628,27 @@ func (store *projectStore) getProject(ctx context.Context, id, userID string) (P
 		return project, nil
 	}
 
+	return getProjectFrom(ctx, store.pool, id, userID)
+}
+
+// Both pool reads and migration transactions use the same complete source representation.
+type projectReader interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func getProjectFrom(ctx context.Context, reader projectReader, id, userID string) (Project, error) {
+
 	var project Project
 	var createdAt, updatedAt time.Time
 	var encryptedRaw string
-	err := store.pool.QueryRow(ctx, `
+	var legacy LegacyProjectFields
+	err := reader.QueryRow(ctx, `
 		select id, name, coalesce(slug, ''), coalesce(description, ''), status,
 		       coalesce(category, ''), coalesce(priority, 'normal'), coalesce(notes, ''),
 		       created_at, updated_at, coalesce(encrypted_payload, ''),
-		       coalesce(encryption_version, 0), coalesce(is_encrypted, false)
+		       coalesce(encryption_version, 0), coalesce(is_encrypted, false),
+		       coalesce(stack, ''), coalesce(domain, ''), coalesce(deployed_url, '')
 		from projects
 		where id = $1 and owner_id = $2`, id, userID).
 		Scan(
@@ -635,13 +665,14 @@ func (store *projectStore) getProject(ctx context.Context, id, userID string) (P
 			&encryptedRaw,
 			&project.EncryptionVersion,
 			&project.IsEncrypted,
+			&legacy.Stack, &legacy.Domain, &legacy.DeployedURL,
 		)
 	if err != nil {
 		return Project{}, err
 	}
 
-	project.CreatedAt = createdAt.Format(time.RFC3339)
-	project.UpdatedAt = updatedAt.Format(time.RFC3339)
+	project.CreatedAt = createdAt.Format(time.RFC3339Nano)
+	project.UpdatedAt = updatedAt.Format(time.RFC3339Nano)
 
 	if project.IsEncrypted {
 		if encryptedRaw == "" {
@@ -659,15 +690,16 @@ func (store *projectStore) getProject(ctx context.Context, id, userID string) (P
 		project.Category = ""
 		project.Priority = ""
 		project.Notes = ""
-		if err := store.loadProjectGitHub(ctx, &project); err != nil {
+		if err := loadProjectGitHubFrom(ctx, reader, &project); err != nil {
 			return Project{}, err
 		}
 		return project, nil
 	}
 
-	if err := store.loadProjectChildren(ctx, &project); err != nil {
+	if err := loadProjectChildrenFrom(ctx, reader, &project); err != nil {
 		return Project{}, err
 	}
+	project.Legacy = &legacy
 	return project, nil
 }
 
@@ -765,6 +797,9 @@ func (store *projectStore) updateEncryptedProject(ctx context.Context, project P
 		if !ok {
 			return Project{}, pgx.ErrNoRows
 		}
+		if !existing.IsEncrypted {
+			return Project{}, errMigrationRequired
+		}
 		project.CreatedAt = existing.CreatedAt
 		project.UpdatedAt = time.Now().Format(time.RFC3339)
 		project.GitHub = existing.GitHub
@@ -782,6 +817,13 @@ func (store *projectStore) updateEncryptedProject(ctx context.Context, project P
 		return Project{}, err
 	}
 	defer tx.Rollback(ctx)
+	var alreadyEncrypted bool
+	if err := tx.QueryRow(ctx, `select coalesce(is_encrypted,false) from projects where id=$1 and owner_id=$2 for update`, project.ID, userID).Scan(&alreadyEncrypted); err != nil {
+		return Project{}, err
+	}
+	if !alreadyEncrypted {
+		return Project{}, errMigrationRequired
+	}
 
 	var createdAt, updatedAt time.Time
 	err = tx.QueryRow(ctx, `
@@ -895,6 +937,9 @@ func (store *projectStore) updateProject(ctx context.Context, project Project, u
 		if !ok {
 			return Project{}, pgx.ErrNoRows
 		}
+		if existing.IsEncrypted {
+			return Project{}, errProjectEncrypted
+		}
 		project.CreatedAt = existing.CreatedAt
 		project.UpdatedAt = time.Now().Format(time.RFC3339)
 		project.Activities = append([]Activity(nil), existing.Activities...)
@@ -908,6 +953,13 @@ func (store *projectStore) updateProject(ctx context.Context, project Project, u
 		return Project{}, err
 	}
 	defer tx.Rollback(ctx)
+	var alreadyEncrypted bool
+	if err := tx.QueryRow(ctx, `select coalesce(is_encrypted,false) from projects where id=$1 and owner_id=$2 for update`, project.ID, userID).Scan(&alreadyEncrypted); err != nil {
+		return Project{}, err
+	}
+	if alreadyEncrypted {
+		return Project{}, errProjectEncrypted
+	}
 
 	var createdAt, updatedAt time.Time
 	err = tx.QueryRow(ctx, `
@@ -957,13 +1009,18 @@ func (store *projectStore) deleteProject(ctx context.Context, id, userID string)
 }
 
 func (store *projectStore) loadProjectChildren(ctx context.Context, project *Project) error {
+	return loadProjectChildrenFrom(ctx, store.pool, project)
+}
+
+func loadProjectChildrenFrom(ctx context.Context, reader projectReader, project *Project) error {
+	project.Activities = nil
 	project.Technologies = nil
 	project.Domains = nil
 	project.Deployments = nil
 	project.Databases = nil
 	project.Links = nil
 
-	rows, err := store.pool.Query(ctx, `select id, name, kind from project_technologies where project_id=$1 order by created_at`, project.ID)
+	rows, err := reader.Query(ctx, `select id, name, kind from project_technologies where project_id=$1 order by created_at, id`, project.ID)
 	if err != nil {
 		return err
 	}
@@ -975,9 +1032,13 @@ func (store *projectStore) loadProjectChildren(ctx context.Context, project *Pro
 		}
 		project.Technologies = append(project.Technologies, item)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
 	rows.Close()
 
-	rows, err = store.pool.Query(ctx, `select id, hostname, coalesce(registrar,''), coalesce(dns_provider,''), coalesce(expires_at::text,''), auto_renew, coalesce(notes,'') from project_domains where project_id=$1 order by created_at`, project.ID)
+	rows, err = reader.Query(ctx, `select id, hostname, coalesce(registrar,''), coalesce(dns_provider,''), coalesce(expires_at::text,''), auto_renew, coalesce(notes,'') from project_domains where project_id=$1 order by created_at, id`, project.ID)
 	if err != nil {
 		return err
 	}
@@ -989,9 +1050,13 @@ func (store *projectStore) loadProjectChildren(ctx context.Context, project *Pro
 		}
 		project.Domains = append(project.Domains, item)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
 	rows.Close()
 
-	rows, err = store.pool.Query(ctx, `select id, name, coalesce(provider,''), environment, coalesce(url,''), coalesce(repository,''), coalesce(branch,''), status, coalesce(notes,'') from project_deployments where project_id=$1 order by created_at`, project.ID)
+	rows, err = reader.Query(ctx, `select id, name, coalesce(provider,''), environment, coalesce(url,''), coalesce(repository,''), coalesce(branch,''), status, coalesce(notes,'') from project_deployments where project_id=$1 order by created_at, id`, project.ID)
 	if err != nil {
 		return err
 	}
@@ -1003,9 +1068,13 @@ func (store *projectStore) loadProjectChildren(ctx context.Context, project *Pro
 		}
 		project.Deployments = append(project.Deployments, item)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
 	rows.Close()
 
-	rows, err = store.pool.Query(ctx, `select id, name, coalesce(provider,''), coalesce(database_type,''), environment, coalesce(url,''), coalesce(notes,'') from project_databases where project_id=$1 order by created_at`, project.ID)
+	rows, err = reader.Query(ctx, `select id, name, coalesce(provider,''), coalesce(database_type,''), environment, coalesce(url,''), coalesce(notes,'') from project_databases where project_id=$1 order by created_at, id`, project.ID)
 	if err != nil {
 		return err
 	}
@@ -1017,9 +1086,13 @@ func (store *projectStore) loadProjectChildren(ctx context.Context, project *Pro
 		}
 		project.Databases = append(project.Databases, item)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
 	rows.Close()
 
-	rows, err = store.pool.Query(ctx, `select id, label, url, kind from project_links where project_id=$1 order by created_at`, project.ID)
+	rows, err = reader.Query(ctx, `select id, label, url, kind from project_links where project_id=$1 order by created_at, id`, project.ID)
 	if err != nil {
 		return err
 	}
@@ -1031,9 +1104,13 @@ func (store *projectStore) loadProjectChildren(ctx context.Context, project *Pro
 		}
 		project.Links = append(project.Links, item)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
 	rows.Close()
 
-	rows, err = store.pool.Query(ctx, `select id, action, coalesce(detail,''), created_at::text from project_activity where project_id=$1 order by created_at desc limit 24`, project.ID)
+	rows, err = reader.Query(ctx, `select id, action, coalesce(detail,''), created_at::text from project_activity where project_id=$1 order by created_at desc, id`, project.ID)
 	if err != nil {
 		return err
 	}
@@ -1045,8 +1122,12 @@ func (store *projectStore) loadProjectChildren(ctx context.Context, project *Pro
 		}
 		project.Activities = append(project.Activities, item)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
 	rows.Close()
-	if err := store.loadProjectGitHub(ctx, project); err != nil {
+	if err := loadProjectGitHubFrom(ctx, reader, project); err != nil {
 		return err
 	}
 	return rows.Err()
@@ -1616,9 +1697,13 @@ func (store *projectStore) loadProjectGitHub(ctx context.Context, project *Proje
 	if store.pool == nil {
 		return nil
 	}
+	return loadProjectGitHubFrom(ctx, store.pool, project)
+}
+
+func loadProjectGitHubFrom(ctx context.Context, reader projectReader, project *Project) error {
 	var repo GitHubRepository
 	var updatedAt time.Time
-	err := store.pool.QueryRow(ctx, `
+	err := reader.QueryRow(ctx, `
 		select r.id,r.github_repo_id,r.owner,r.name,r.full_name,r.html_url,r.default_branch,r.private,coalesce(r.description,''),r.updated_at
 		from github_repositories r join projects p on p.github_repository_id=r.id
 		where p.id=$1`, project.ID).Scan(&repo.ID, &repo.GitHubRepoID, &repo.Owner, &repo.Name, &repo.FullName, &repo.HTMLURL, &repo.DefaultBranch, &repo.Private, &repo.Description, &updatedAt)
@@ -1652,6 +1737,12 @@ func (store *projectStore) projectGitHubHandler(w http.ResponseWriter, r *http.R
 		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
 		return
 	}
+	tx, err := store.pool.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	defer tx.Rollback(r.Context())
 	switch r.Method {
 	case http.MethodPost:
 		var body struct {
@@ -1667,7 +1758,7 @@ func (store *projectStore) projectGitHubHandler(w http.ResponseWriter, r *http.R
 		}
 		var repo GitHubRepository
 		var updatedAt time.Time
-		err = store.pool.QueryRow(r.Context(), `select r.id,r.github_repo_id,r.owner,r.name,r.full_name,r.html_url,r.default_branch,r.private,coalesce(r.description,''),r.updated_at from github_repositories r join github_connections c on c.id=r.connection_id where r.id=$1 and c.user_id=$2`, body.RepositoryID, userID).Scan(&repo.ID, &repo.GitHubRepoID, &repo.Owner, &repo.Name, &repo.FullName, &repo.HTMLURL, &repo.DefaultBranch, &repo.Private, &repo.Description, &updatedAt)
+		err = tx.QueryRow(r.Context(), `select r.id,r.github_repo_id,r.owner,r.name,r.full_name,r.html_url,r.default_branch,r.private,coalesce(r.description,''),r.updated_at from github_repositories r join github_connections c on c.id=r.connection_id where r.id=$1 and c.user_id=$2`, body.RepositoryID, userID).Scan(&repo.ID, &repo.GitHubRepoID, &repo.Owner, &repo.Name, &repo.FullName, &repo.HTMLURL, &repo.DefaultBranch, &repo.Private, &repo.Description, &updatedAt)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeError(w, http.StatusNotFound, errors.New("repository not found"))
@@ -1678,29 +1769,33 @@ func (store *projectStore) projectGitHubHandler(w http.ResponseWriter, r *http.R
 		}
 		var owner string
 		var projectEncrypted bool
-		err = store.pool.QueryRow(r.Context(), `select owner_id,coalesce(is_encrypted,false) from projects where id=$1`, projectID).Scan(&owner, &projectEncrypted)
+		err = tx.QueryRow(r.Context(), `select owner_id,coalesce(is_encrypted,false) from projects where id=$1 for update`, projectID).Scan(&owner, &projectEncrypted)
 		if err != nil || owner != userID {
 			writeError(w, http.StatusNotFound, errors.New("project not found"))
 			return
 		}
 		var existing string
-		if err := store.pool.QueryRow(r.Context(), `select id from projects where github_repository_id=$1 and id<>$2`, body.RepositoryID, projectID).Scan(&existing); err == nil {
+		if err := tx.QueryRow(r.Context(), `select id from projects where github_repository_id=$1 and id<>$2`, body.RepositoryID, projectID).Scan(&existing); err == nil {
 			writeError(w, http.StatusConflict, errors.New("repository is already linked to another project"))
 			return
 		}
-		_, err = store.pool.Exec(r.Context(), `update projects set github_repository_id=$1,updated_at=now() where id=$2 and owner_id=$3`, body.RepositoryID, projectID, userID)
+		_, err = tx.Exec(r.Context(), `update projects set github_repository_id=$1,updated_at=now() where id=$2 and owner_id=$3`, body.RepositoryID, projectID, userID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
 		if !projectEncrypted {
-			_, _ = store.pool.Exec(r.Context(), `insert into project_activity(project_id,action,detail) values($1,$2,$3)`, projectID, "github.linked", "Linked GitHub repository "+repo.FullName+".")
+			_, _ = tx.Exec(r.Context(), `insert into project_activity(project_id,action,detail) values($1,$2,$3)`, projectID, "github.linked", "Linked GitHub repository "+repo.FullName+".")
+		}
+		if err := tx.Commit(r.Context()); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
 		}
 		repo.UpdatedAt = updatedAt.Format(time.RFC3339)
 		writeJSON(w, http.StatusOK, repo)
 	case http.MethodDelete:
 		var projectEncrypted bool
-		err := store.pool.QueryRow(r.Context(), `select coalesce(is_encrypted,false) from projects where id=$1 and owner_id=$2`, projectID, userID).Scan(&projectEncrypted)
+		err := tx.QueryRow(r.Context(), `select coalesce(is_encrypted,false) from projects where id=$1 and owner_id=$2 for update`, projectID, userID).Scan(&projectEncrypted)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, errors.New("project not found"))
 			return
@@ -1710,7 +1805,7 @@ func (store *projectStore) projectGitHubHandler(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		res, err := store.pool.Exec(r.Context(), `update projects set github_repository_id=null,updated_at=now() where id=$1 and owner_id=$2`, projectID, userID)
+		res, err := tx.Exec(r.Context(), `update projects set github_repository_id=null,updated_at=now() where id=$1 and owner_id=$2`, projectID, userID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
@@ -1720,7 +1815,11 @@ func (store *projectStore) projectGitHubHandler(w http.ResponseWriter, r *http.R
 			return
 		}
 		if !projectEncrypted {
-			_, _ = store.pool.Exec(r.Context(), `insert into project_activity(project_id,action,detail) values($1,$2,$3)`, projectID, "github.unlinked", "Unlinked GitHub repository.")
+			_, _ = tx.Exec(r.Context(), `insert into project_activity(project_id,action,detail) values($1,$2,$3)`, projectID, "github.unlinked", "Unlinked GitHub repository.")
+		}
+		if err := tx.Commit(r.Context()); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -1864,6 +1963,14 @@ func decodeJSON(r *http.Request, target any) error {
 
 func cloneProject(project Project) Project {
 	cloned := project
+	if project.Legacy != nil {
+		legacy := *project.Legacy
+		cloned.Legacy = &legacy
+	}
+	if project.EncryptedPayload != nil {
+		payload := *project.EncryptedPayload
+		cloned.EncryptedPayload = &payload
+	}
 	cloned.Technologies = append([]Technology(nil), project.Technologies...)
 	cloned.Domains = append([]Domain(nil), project.Domains...)
 	cloned.Deployments = append([]Deployment(nil), project.Deployments...)

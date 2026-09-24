@@ -1,5 +1,6 @@
 const state = {
   projects: [],
+  migration: null,
   currentProject: null,
   activeFilter: 'all',
   currentView: 'grid',
@@ -179,6 +180,10 @@ function clearPrivateState() {
   cancelVaultPrompt?.();
   state.vault = { exists: false, record: null, masterKey: null, unlocked: false };
   state.projects = [];
+  state.migration = null;
+  $('#migrationStatus').hidden = true;
+  $('#migrationMessage').textContent = '';
+  $('#retryMigrationButton').hidden = true;
   state.currentProject = null;
   state.githubPickerProject = null;
   state.githubRepositories = [];
@@ -416,7 +421,12 @@ function projectPrivateData(project = {}) {
     databases: Array.isArray(project.databases) ? project.databases : [],
     links: Array.isArray(project.links) ? project.links : [],
     notes: String(project.notes || ''),
-    activities: Array.isArray(project.activities) ? project.activities.slice(0, 24) : [],
+    activities: Array.isArray(project.activities) ? project.activities : [],
+    ...(project.legacy ? { legacy: {
+      stack: String(project.legacy.stack || ''),
+      domain: String(project.legacy.domain || ''),
+      deployedUrl: String(project.legacy.deployedUrl || ''),
+    } } : {}),
   };
 }
 
@@ -464,28 +474,88 @@ async function encryptedProjectRequest(project) {
   };
 }
 
+function legacyMigrationSource(source) {
+  const project = { ...source, ...projectPrivateData(source) };
+  // Retain original v1 values and make resources visible when no richer equivalent exists.
+  for (const name of (project.legacy?.stack || '').split(/[,+]/).map(value => value.trim()).filter(Boolean)) {
+    if (!project.technologies.some(item => item.name === name)) {
+      project.technologies = [...project.technologies, { name, kind: 'stack' }];
+    }
+  }
+  const hostname = project.legacy?.domain?.trim();
+  if (hostname && !project.domains.some(item => item.hostname === hostname)) {
+    project.domains = [...project.domains, { hostname, autoRenew: false }];
+  }
+  const url = project.legacy?.deployedUrl?.trim();
+  if (url && !project.deployments.some(item => item.url === url)) {
+    project.deployments = [...project.deployments, { name: 'Production', url, environment: 'production', status: 'active' }];
+  }
+  return project;
+}
+
 async function migrateLegacyProjects() {
+  if (!state.vault.unlocked || !state.vault.masterKey || state.migration?.running) return;
   const legacyProjects = state.projects.filter(project => !project.isEncrypted && project.id && !String(project.id).startsWith('local-'));
-  if (!legacyProjects.length) return;
-
-  let migrated = 0;
-
-  for (const project of legacyProjects) {
-    const requestBody = await encryptedProjectRequest(project);
-    const record = await api(`/api/projects/${encodeURIComponent(project.id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(requestBody),
-    });
-
-    const migratedProject = hydrateEncryptedProject(record, project);
-    const index = state.projects.findIndex(item => item.id === project.id);
-    if (index >= 0) state.projects[index] = migratedProject;
-    if (state.currentProject?.id === project.id) state.currentProject = migratedProject;
-    migrated += 1;
+  if (!legacyProjects.length) {
+    $('#migrationStatus').hidden = true;
+    return;
   }
 
-  if (migrated) {
-    showToast(`${migrated} existing ${migrated === 1 ? 'project was' : 'projects were'} encrypted.`);
+  const generation = vaultGeneration;
+  const progress = { running: true, completed: 0, failed: 0, total: legacyProjects.length };
+  state.migration = progress;
+  $('#migrationStatus').hidden = false;
+  $('#retryMigrationButton').hidden = true;
+  try {
+    for (const project of legacyProjects) {
+      assertVaultGeneration(generation);
+      $('#migrationMessage').textContent = `Encrypting older projects in your browser (${progress.completed + progress.failed + 1} of ${progress.total})…`;
+      try {
+        const path = `/api/projects/${encodeURIComponent(project.id)}/migrate`;
+        // Fetch an authoritative, complete snapshot. A previous response may have been lost.
+        const source = await api(path);
+        let record = source;
+        if (!source.isEncrypted) {
+          if (!source.migrationRevision) throw new Error('Missing migration source revision.');
+          const privateSource = legacyMigrationSource(source);
+          const requestBody = await encryptedProjectRequest(privateSource);
+          const verified = await StackroomCrypto.decryptJSON(state.vault.masterKey, requestBody.encryptedPayload);
+          assertVaultGeneration(generation);
+          if (JSON.stringify(verified) !== JSON.stringify(projectPrivateData(privateSource))) {
+            throw new Error('Encrypted migration verification failed.');
+          }
+          record = await api(path, {
+            method: 'POST',
+            headers: { 'If-Match': source.migrationRevision },
+            body: JSON.stringify(requestBody),
+          });
+        }
+        if (!record.isEncrypted) throw new Error('Migration was not confirmed.');
+        // Another tab may have migrated first; use its saved ciphertext, never stale local data.
+        const migrated = await decryptProjectRecord(record);
+        assertVaultGeneration(generation);
+        const index = state.projects.findIndex(item => item.id === project.id);
+        if (index >= 0) state.projects[index] = migrated;
+        if (state.currentProject?.id === project.id) state.currentProject = migrated;
+        progress.completed += 1;
+      } catch (error) {
+        if (error.name === 'AbortError' || generation !== vaultGeneration) return;
+        // Keep this source available and continue the batch. Retry starts from a fresh snapshot.
+        progress.failed += 1;
+      }
+    }
+  } finally {
+    if (generation === vaultGeneration) {
+      progress.running = false;
+      $('#migrationMessage').textContent = progress.failed
+        ? `Could not confirm encryption for ${progress.failed} older ${progress.failed === 1 ? 'project' : 'projects'}. Retry to check saved data and continue.`
+        : `${progress.completed} older ${progress.completed === 1 ? 'project is' : 'projects are'} now protected by your private vault.`;
+      $('#retryMigrationButton').hidden = !progress.failed;
+      renderDashboard();
+      if (!refs.detailView.hidden && state.currentProject) renderDetail(state.currentProject);
+      if (!refs.domainsView.hidden) renderDomainsPage();
+      if (!refs.attentionView.hidden) renderAttentionPage();
+    }
   }
 }
 
@@ -786,7 +856,7 @@ function renderDetail(project) {
   const databases = project.databases?.map(item => `<div class="resource-card"><div><strong>${escapeHTML(item.name || 'Database')}</strong><p>${escapeHTML([item.provider, item.databaseType, item.environment].filter(Boolean).join(' · ') || 'Database details not added')}</p></div><div class="resource-meta">${item.url ? `<a href="${escapeHTML(normalizeURL(item.url))}" target="_blank" rel="noopener noreferrer">Console ↗</a>` : '<span>Internal connection</span>'}</div></div>`).join('');
   const links = project.links?.map(item => `<a class="link-card" href="${escapeHTML(normalizeURL(item.url))}" target="_blank" rel="noopener noreferrer"><span>${escapeHTML(item.label)}</span><small>${escapeHTML(item.url)}</small><b>↗</b></a>`).join('');
   const tags = project.technologies?.map(item => `<span class="technology-chip">${escapeHTML(item.name)}<small>${escapeHTML(item.kind || 'other')}</small></span>`).join('');
-  const activity = (project.activities || []).map(item => `<div class="activity-item"><div class="activity-dot"></div><div><strong>${escapeHTML(item.action)}</strong><p>${escapeHTML(item.detail || '')}</p></div><time>${relativeTime(item.createdAt)}</time></div>`).join('');
+  const activity = (project.activities || []).slice(0, 24).map(item => `<div class="activity-item"><div class="activity-dot"></div><div><strong>${escapeHTML(item.action)}</strong><p>${escapeHTML(item.detail || '')}</p></div><time>${relativeTime(item.createdAt)}</time></div>`).join('');
   const healthChecks = [
     ['Description', Boolean(project.description?.trim())], ['Category', Boolean(project.category?.trim())], ['Technology', Boolean(project.technologies?.length)], ['Domains', Boolean(project.domains?.length)], ['Deployments', Boolean(project.deployments?.length)], ['Databases', Boolean(project.databases?.length)], ['Links', Boolean(project.links?.length)], ['GitHub', Boolean(project.github)], ['Notes', Boolean(project.notes?.trim())],
   ];
@@ -1059,6 +1129,10 @@ function projectToForm(project) {
 
 function openProjectModal(project = null) {
   if (!state.vault.unlocked) return;
+  if (project && !project.isEncrypted && !String(project.id).startsWith('local-')) {
+    showToast('Finish migrating this project before editing it. Use Retry migration if needed.');
+    return;
+  }
   state.editing = Boolean(project);
   refs.formError.hidden = true;
   refs.modalBackdrop.hidden = false;
@@ -1103,10 +1177,11 @@ async function saveProject(event) {
 
   if (state.editing && state.currentProject) {
     project.slug = state.currentProject.slug || project.slug;
+    if (state.currentProject.legacy) project.legacy = state.currentProject.legacy;
     project.activities = [
       { action: 'updated', detail: 'Project details updated.', createdAt: now },
       ...(state.currentProject.activities || []),
-    ].slice(0, 24);
+    ];
   } else {
     project.activities = [
       { action: 'created', detail: 'Project created.', createdAt: now },
@@ -1281,6 +1356,7 @@ $('#retrySignOutButton').addEventListener('click', async () => {
   await signOut();
 });
 $('#lockVaultButton').addEventListener('click', lockVault);
+$('#retryMigrationButton').addEventListener('click', migrateLegacyProjects);
 
 refs.domainsTable.addEventListener('click', event => {
   const button = event.target.closest('[data-domain-project]');
