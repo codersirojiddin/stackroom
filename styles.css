@@ -233,6 +233,16 @@ a { color: inherit; }
 
 .toast { position: fixed; right: 23px; bottom: 23px; z-index: 160; max-width: min(380px, calc(100vw - 46px)); padding: 11px 14px; border: 1px solid var(--line); border-radius: 11px; background: #fbf9f4; box-shadow: var(--shadow); color: var(--ink); font-size: 11px; }
 
+.privacy-vault-backdrop { position: fixed; inset: 0; z-index: 210; display: grid; place-items: center; padding: 24px; overflow: auto; background: rgba(20,21,17,.38); backdrop-filter: blur(12px); }
+.privacy-vault-card { width: min(520px, 100%); max-height: calc(100dvh - 48px); overflow: auto; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: #faf8f3; box-shadow: var(--shadow); }
+.privacy-vault-card h2 { margin: 0; font-size: clamp(25px, 5vw, 30px); line-height: 1.1; letter-spacing: -.035em; }
+.privacy-vault-copy { margin: 14px 0 20px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.privacy-vault-notice { margin: 0 0 18px; padding: 12px 14px; border: 1px solid rgba(45,106,73,.2); border-radius: 12px; background: var(--accent-soft); font-size: 13px; line-height: 1.45; }
+.privacy-vault-hint { margin: 8px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.privacy-vault-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 20px; }
+.privacy-vault-card [aria-invalid="true"] { border-color: var(--danger); }
+.privacy-vault-card button:disabled { cursor: wait; opacity: .65; }
+
 @keyframes rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 1100px) {

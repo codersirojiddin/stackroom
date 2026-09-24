@@ -53,13 +53,16 @@ const StackroomCrypto = (() => {
 
     validateIterations(iterations);
 
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(passphrase),
-      'PBKDF2',
-      false,
-      ['deriveKey']
-    );
+    const passphraseBytes = encoder.encode(passphrase);
+    passphrase = '';
+    let keyMaterial;
+    try {
+      keyMaterial = await crypto.subtle.importKey(
+        'raw', passphraseBytes, 'PBKDF2', false, ['deriveKey']
+      );
+    } finally {
+      passphraseBytes.fill(0);
+    }
 
     return crypto.subtle.deriveKey(
       {
@@ -146,25 +149,27 @@ const StackroomCrypto = (() => {
     const salt = randomBytes(16);
     const wrappingKey = await deriveWrappingKey(passphrase, salt, DEFAULT_ITERATIONS);
 
+    passphrase = '';
     const exportableMasterKey = await generateExportableMasterKey();
     const rawMasterKey = await exportMasterKey(exportableMasterKey);
-    const wrapped = await encryptBytes(wrappingKey, rawMasterKey);
-
-    // Use a non-extractable master key during the normal app session.
-    const masterKey = await importMasterKey(rawMasterKey);
-    rawMasterKey.fill(0);
-
-    return {
-      masterKey,
-      vaultRecord: {
-        encrypted_master_key: wrapped.ciphertext,
-        salt: bytesToBase64(salt),
-        wrap_iv: wrapped.iv,
-        kdf: 'PBKDF2-SHA256',
-        kdf_iterations: DEFAULT_ITERATIONS,
-        crypto_version: CRYPTO_VERSION,
-      },
-    };
+    try {
+      const wrapped = await encryptBytes(wrappingKey, rawMasterKey);
+      // Use a non-extractable master key during the normal app session.
+      const masterKey = await importMasterKey(rawMasterKey);
+      return {
+        masterKey,
+        vaultRecord: {
+          encrypted_master_key: wrapped.ciphertext,
+          salt: bytesToBase64(salt),
+          wrap_iv: wrapped.iv,
+          kdf: 'PBKDF2-SHA256',
+          kdf_iterations: DEFAULT_ITERATIONS,
+          crypto_version: CRYPTO_VERSION,
+        },
+      };
+    } finally {
+      rawMasterKey.fill(0);
+    }
   }
 
   async function unlockVault(passphrase, vaultRecord) {
@@ -184,6 +189,7 @@ const StackroomCrypto = (() => {
       vaultRecord.kdf_iterations
     );
 
+    passphrase = '';
     const rawMasterKey = await decryptBytes(
       wrappingKey,
       vaultRecord.encrypted_master_key,
@@ -199,13 +205,16 @@ const StackroomCrypto = (() => {
 
   async function encryptJSON(masterKey, value) {
     const plaintext = encoder.encode(JSON.stringify(value));
-    const encrypted = await encryptBytes(masterKey, plaintext);
-
-    return {
-      ciphertext: encrypted.ciphertext,
-      iv: encrypted.iv,
-      version: CRYPTO_VERSION,
-    };
+    try {
+      const encrypted = await encryptBytes(masterKey, plaintext);
+      return {
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        version: CRYPTO_VERSION,
+      };
+    } finally {
+      plaintext.fill(0);
+    }
   }
 
   async function decryptJSON(masterKey, payload) {
@@ -219,7 +228,11 @@ const StackroomCrypto = (() => {
       payload.iv
     );
 
-    return JSON.parse(decoder.decode(plaintextBytes));
+    try {
+      return JSON.parse(decoder.decode(plaintextBytes));
+    } finally {
+      plaintextBytes.fill(0);
+    }
   }
 
   return {

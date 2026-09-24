@@ -51,6 +51,7 @@
                 <button class="button button-primary auth-submit" type="submit" id="authSubmit">Sign in
                     <span>→</span></button>
             </form>
+            <button class="button button-quiet" id="retrySignOutButton" type="button" hidden>Retry sign out</button>
             <div class="auth-divider"><span>or continue with</span></div>
             <button class="button google-button" id="googleButton" type="button"><span class="google-g">G</span>
                 Google</button>
@@ -97,6 +98,7 @@
                     <div class="profile-menu" id="profileMenu" hidden>
                         <p class="profile-name" id="profileName">Signed in</p>
                         <p class="profile-email" id="profileEmail">—</p>
+                        <button type="button" id="lockVaultButton">Lock vault <span>◫</span></button>
                         <button type="button" id="signOutButton">Sign out <span>→</span></button>
                     </div>
                 </div>
@@ -329,8 +331,39 @@
 
             <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-            <script src="/crypto.js?v=4.1.0"></script>
-            <script src="/app.js?v=4.1.0"></script>
+        </main>
+    </div>
+
+    <div class="privacy-vault-backdrop" id="privacyVaultBackdrop" hidden>
+        <section class="privacy-vault-card" role="dialog" aria-modal="true" aria-labelledby="privacyVaultTitle"
+            aria-describedby="privacyVaultCopy">
+            <p class="eyebrow">Private vault <span class="eyebrow-line"></span></p>
+            <h2 id="privacyVaultTitle">Your private vault</h2>
+            <p class="privacy-vault-copy" id="privacyVaultCopy" role="status">Checking your vault…</p>
+            <p class="privacy-vault-notice" id="privacyVaultNotice" hidden></p>
+            <form id="privacyVaultForm" novalidate>
+                <div id="privacyVaultFields" hidden>
+                    <label class="field-label">Vault passphrase
+                        <input id="privacyVaultPassphrase" type="password" autocomplete="off" required
+                            spellcheck="false" aria-describedby="privacyVaultHint privacyVaultError" />
+                    </label>
+                    <p class="privacy-vault-hint" id="privacyVaultHint"></p>
+                    <label class="field-label" id="privacyVaultConfirmField" hidden>Confirm passphrase
+                        <input id="privacyVaultConfirm" type="password" autocomplete="off"
+                            spellcheck="false" aria-describedby="privacyVaultError" />
+                    </label>
+                </div>
+                <p class="form-error" id="privacyVaultError" role="alert" hidden></p>
+                <div class="privacy-vault-actions">
+                    <button class="button button-quiet" id="privacyVaultSignOut" type="button">Sign out</button>
+                    <button class="button button-primary" id="privacyVaultSubmit" type="submit" disabled>Checking vault…</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script src="/crypto.js?v=4.1.0"></script>
+    <script src="/app.js?v=4.1.0"></script>
 </body>
 
 </html>

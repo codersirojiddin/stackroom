@@ -336,20 +336,13 @@ func (store *projectStore) vaultHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		_, err := store.pool.Exec(r.Context(), `
+		result, err := store.pool.Exec(r.Context(), `
 			insert into user_vaults (
 				owner_id, encrypted_master_key, salt, wrap_iv,
 				kdf, kdf_iterations, crypto_version, updated_at
 			)
 			values ($1,$2,$3,$4,$5,$6,$7,now())
-			on conflict (owner_id) do update set
-				encrypted_master_key = excluded.encrypted_master_key,
-				salt = excluded.salt,
-				wrap_iv = excluded.wrap_iv,
-				kdf = excluded.kdf,
-				kdf_iterations = excluded.kdf_iterations,
-				crypto_version = excluded.crypto_version,
-				updated_at = now()`,
+			on conflict (owner_id) do nothing`,
 			userID,
 			vault.EncryptedMasterKey,
 			vault.Salt,
@@ -360,6 +353,11 @@ func (store *projectStore) vaultHandler(w http.ResponseWriter, r *http.Request) 
 		)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		if result.RowsAffected() == 0 {
+			writeError(w, http.StatusConflict, errors.New("a private vault already exists; unlock it instead"))
 			return
 		}
 
