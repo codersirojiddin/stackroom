@@ -149,3 +149,47 @@ func TestSecurityHeadersRejectOversizedAPIRequest(t *testing.T) {
 		t.Fatalf("expected 413, got %d", rec.Code)
 	}
 }
+
+func TestPublicHandlerServesCleanTrustRoutes(t *testing.T) {
+	handler := publicHandler()
+
+	for _, route := range []string{"/", "/roadmap", "/about", "/privacy", "/terms", "/security", "/contact"} {
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:8080"+route, nil)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s expected 200, got %d", route, rec.Code)
+		}
+	}
+}
+
+func TestPublicHandlerCanonicalizesTrustURLs(t *testing.T) {
+	handler := publicHandler()
+
+	tests := map[string]string{
+		"/about/":              "/about",
+		"/privacy/":            "/privacy",
+		"/terms/":              "/terms",
+		"/security/":           "/security",
+		"/contact/":            "/contact",
+		"/about/index.html":    "/about",
+		"/privacy/index.html":  "/privacy",
+		"/terms/index.html":    "/terms",
+		"/security/index.html": "/security",
+		"/contact/index.html":  "/contact",
+	}
+
+	for from, want := range tests {
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:8080"+from, nil)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusPermanentRedirect {
+			t.Fatalf("%s expected 308, got %d", from, rec.Code)
+		}
+		if got := rec.Header().Get("Location"); got != want {
+			t.Fatalf("%s expected redirect to %s, got %s", from, want, got)
+		}
+	}
+}

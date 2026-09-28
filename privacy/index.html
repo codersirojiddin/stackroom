@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f4f1ea" />
+  <meta name="description" content="How Stackroom handles account information, encrypted project data, authentication and integrations." />
+  <title>Privacy Policy — Stackroom</title>
+  <link rel="icon" href="/assets/stackroom-logo.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="trust-body">
+  <div class="noise" aria-hidden="true"></div>
+
+  <div class="trust-shell">
+    <header class="trust-header">
+      <a class="trust-brand" href="/" aria-label="Stackroom home">
+        <img class="trust-brand-mark" src="/assets/stackroom-mark.jpg" alt="" />
+        <span class="trust-brand-copy">
+          <strong>stackroom</strong>
+          <span>your build archive</span>
+        </span>
+      </a>
+
+      <nav class="trust-nav" aria-label="Trust pages">
+          <a href="/about">About</a>
+          <a href="/privacy" aria-current="page">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/security">Security</a>
+          <a href="/contact">Contact</a>
+      </nav>
+    </header>
+
+    <main class="trust-main">
+      <p class="trust-kicker">Legal</p>
+      <h1>Privacy<br><em>Policy.</em></h1>
+      <p class="trust-lead">Stackroom is designed to minimize how much private project content is available to the server while still providing a useful project workspace.</p>
+      <p class="trust-updated">Last updated: September 28, 2026</p>
+      <div class="trust-callout">Stackroom currently serves the JavaScript application responsible for client-side encryption. For that reason, Stackroom does not claim that the service operator could never technically access plaintext under every possible threat model.</div>
+
+      <section class="trust-section">
+        <h2>1. Information we process</h2>
+        <p>Depending on how you use Stackroom, we may process account and session information, encrypted project payloads, encrypted vault metadata, GitHub account and repository metadata, encrypted GitHub authorization tokens, and basic technical request information needed to operate and protect the service.</p>
+      </section>
+      <section class="trust-section">
+        <h2>2. Private project content</h2>
+        <p>Private project content is encrypted in your browser before it reaches Stackroom's servers. During normal encrypted project operations, Stackroom stores encrypted project payloads rather than plaintext private project content.</p>
+        <p>Your Private Vault passphrase is not sent to Stackroom's server.</p>
+      </section>
+      <section class="trust-section">
+        <h2>3. Private Vault</h2>
+        <p>Stackroom uses browser-side cryptography to protect private project data. A key derived from your vault passphrase is used to unlock an encrypted master key. Project content is then encrypted and decrypted locally in your browser.</p>
+        <p>If you lose your vault passphrase, Stackroom may not be able to recover access to encrypted project content.</p>
+      </section>
+      <section class="trust-section">
+        <h2>4. GitHub integration</h2>
+        <p>If you connect GitHub, Stackroom may process GitHub account information, repository metadata, repository identifiers, and authorization tokens needed to provide the integration.</p>
+        <p>GitHub access and refresh tokens are encrypted at rest on the server. They are not protected by the browser-side Private Vault because the backend must use them to communicate with GitHub.</p>
+      </section>
+      <section class="trust-section">
+        <h2>5. Authentication and sessions</h2>
+        <p>Stackroom uses Neon Auth for account authentication and may support third-party sign-in providers such as Google. Authentication providers may process information according to their own policies.</p>
+        <p>Stackroom uses authentication-related cookies or session mechanisms necessary to keep users signed in and protect account access. The vault passphrase is not stored as a cookie, localStorage value, sessionStorage value, or persistent browser credential.</p>
+      </section>
+      <section class="trust-section">
+        <h2>6. Service providers</h2>
+        <p>Stackroom relies on infrastructure providers for hosting, authentication, databases, and integrations. Those providers may process limited technical data necessary to provide their services.</p>
+      </section>
+      <section class="trust-section">
+        <h2>7. Retention and deletion</h2>
+        <p>Account and service data is retained for as long as reasonably necessary to operate Stackroom, provide requested functionality, maintain security, and satisfy applicable obligations.</p>
+        <p>Deleted data may remain temporarily in infrastructure backups or logs according to the retention practices of the underlying service providers.</p>
+      </section>
+      <section class="trust-section">
+        <h2>8. Security</h2>
+        <p>Stackroom uses client-side encryption for private project content, encrypted token storage, authenticated ownership checks, Content Security Policy, restricted public asset serving, request validation, and other application security controls.</p>
+        <p>No internet-connected service can guarantee absolute security.</p>
+      </section>
+      <section class="trust-section">
+        <h2>9. Changes</h2>
+        <p>This Privacy Policy may change as Stackroom evolves. The latest version will be published here with an updated revision date.</p>
+      </section>
+      <section class="trust-section">
+        <h2>10. Contact</h2>
+        <p>Privacy questions can be sent to <a href="mailto:contact@stackroom.site">contact@stackroom.site</a>.</p>
+      </section>
+    </main>
+
+    <footer class="trust-footer">
+      <span>© 2026 Stackroom · Your builds, kept close.</span>
+      <a href="https://github.com/codersirojiddin/stackroom" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </footer>
+  </div>
+</body>
+</html>
