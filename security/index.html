@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f4f1ea" />
+  <meta name="description" content="How Stackroom protects private project content and where the trust boundaries are." />
+  <title>Security — Stackroom</title>
+  <link rel="icon" href="/assets/stackroom-logo.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="trust-body">
+  <div class="noise" aria-hidden="true"></div>
+
+  <div class="trust-shell">
+    <header class="trust-header">
+      <a class="trust-brand" href="/" aria-label="Stackroom home">
+        <img class="trust-brand-mark" src="/assets/stackroom-mark.jpg" alt="" />
+        <span class="trust-brand-copy">
+          <strong>stackroom</strong>
+          <span>your build archive</span>
+        </span>
+      </a>
+
+      <nav class="trust-nav" aria-label="Trust pages">
+          <a href="/about">About</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/security" aria-current="page">Security</a>
+          <a href="/contact">Contact</a>
+      </nav>
+    </header>
+
+    <main class="trust-main">
+      <p class="trust-kicker">Trust</p>
+      <h1>Security at<br><em>Stackroom.</em></h1>
+      <p class="trust-lead">Stackroom's privacy model starts in the browser: private project content is encrypted before it reaches the backend.</p>
+
+      <section class="trust-section">
+        <h2>Client-side encryption</h2>
+        <p>Encryption and decryption of private project content happen in the browser using the Web Crypto API. Stackroom currently uses AES-256-GCM for encrypted project data.</p>
+      </section>
+      <section class="trust-section">
+        <h2>Private Vault</h2>
+        <p>Your vault passphrase is used locally to derive a cryptographic wrapping key. That wrapping key protects your encrypted master key, which is then used to encrypt and decrypt private project content inside the browser.</p>
+        <p>The vault passphrase is not sent to Stackroom's server.</p>
+      </section>
+      <section class="trust-section">
+        <h2>What the server stores</h2>
+        <ul>
+          <li>Encrypted project payloads and encryption metadata</li>
+          <li>Encrypted master-key metadata required by the Private Vault</li>
+          <li>Account identifiers required for ownership isolation</li>
+          <li>GitHub integration metadata</li>
+          <li>Encrypted GitHub access and refresh tokens</li>
+        </ul>
+      </section>
+      <section class="trust-section">
+        <h2>GitHub tokens</h2>
+        <p>GitHub tokens follow a different security model from Private Vault project content. The backend must use GitHub access tokens to communicate with GitHub on your behalf, so those tokens are encrypted at rest on the server rather than encrypted with your Private Vault.</p>
+      </section>
+      <section class="trust-section">
+        <h2>Application hardening</h2>
+        <ul>
+          <li>Authenticated per-user ownership checks</li>
+          <li>Restrictive Content Security Policy</li>
+          <li>Restricted public asset serving</li>
+          <li>Request body limits and encrypted payload validation</li>
+          <li>Cross-origin write protection</li>
+          <li>XSS and unsafe URL protections</li>
+          <li>Security and migration regression tests</li>
+        </ul>
+      </section>
+      <section class="trust-section">
+        <h2>Threat model</h2>
+        <p>Client-side encryption reduces the amount of plaintext private project data available to the backend. However, Stackroom currently serves the frontend JavaScript responsible for encryption.</p>
+        <p>A compromised or malicious frontend deployment could theoretically attempt to access information while it is decrypted in the browser. Stackroom therefore does not claim absolute zero-knowledge protection against every possible operator or frontend compromise scenario.</p>
+      </section>
+      <section class="trust-section">
+        <h2>Responsible disclosure</h2>
+        <p>If you discover a security issue, please avoid publishing exploitable details before there has been a reasonable opportunity to investigate.</p>
+        <p>Contact <a href="mailto:contact@stackroom.site">contact@stackroom.site</a>.</p>
+      </section>
+    </main>
+
+    <footer class="trust-footer">
+      <span>© 2026 Stackroom · Your builds, kept close.</span>
+      <a href="https://github.com/codersirojiddin/stackroom" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </footer>
+  </div>
+</body>
+</html>

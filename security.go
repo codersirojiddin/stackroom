@@ -28,12 +28,20 @@ var errRequestTooLarge = errors.New("request body is too large")
 // Explicit public assets only. This prevents accidental exposure of .env,
 // source files, SQL, tests, Git metadata, binaries, and other workspace files.
 //
-//go:embed index.html styles.css app.js crypto.js assets/* roadmap/index.html roadmap/styles.css roadmap/script.js
+//go:embed index.html styles.css app.js crypto.js assets/* roadmap/index.html roadmap/styles.css roadmap/script.js about/* privacy/* terms/* security/* contact/*
 var publicAssets embed.FS
 
-func publicHandler() http.Handler {
-	files := http.FileServer(http.FS(publicAssets))
+var publicPageRoutes = map[string]string{
+	"/":         "index.html",
+	"/roadmap":  "roadmap/index.html",
+	"/about":    "about/index.html",
+	"/privacy":  "privacy/index.html",
+	"/terms":    "terms/index.html",
+	"/security": "security/index.html",
+	"/contact":  "contact/index.html",
+}
 
+func publicHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
@@ -41,27 +49,56 @@ func publicHandler() http.Handler {
 			return
 		}
 
-		name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+		requestPath := r.URL.Path
+		cleanPath := path.Clean("/" + strings.TrimPrefix(requestPath, "/"))
+
+		for route, filename := range publicPageRoutes {
+			if cleanPath == route {
+				if route != "/" && strings.HasSuffix(requestPath, "/") {
+					http.Redirect(w, r, route, http.StatusPermanentRedirect)
+					return
+				}
+				servePublicAsset(w, r, filename)
+				return
+			}
+
+			if cleanPath == "/"+filename {
+				http.Redirect(w, r, route, http.StatusPermanentRedirect)
+				return
+			}
+		}
+
+		name := strings.TrimPrefix(cleanPath, "/")
 		if name == "" || name == "." {
 			name = "index.html"
-		} else if name == "roadmap" {
-			name = "roadmap/index.html"
 		}
 
 		entry, err := fs.Stat(publicAssets, name)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		if entry.IsDir() && name != "roadmap" {
+		if err != nil || entry.IsDir() {
 			http.NotFound(w, r)
 			return
 		}
 
-		// Revalidate deployable frontend files. Vault material is never stored here.
-		w.Header().Set("Cache-Control", "no-cache")
-		files.ServeHTTP(w, r)
+		servePublicAsset(w, r, name)
 	})
+}
+
+func servePublicAsset(w http.ResponseWriter, r *http.Request, name string) {
+	entry, err := fs.Stat(publicAssets, name)
+	if err != nil || entry.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+
+	data, err := fs.ReadFile(publicAssets, name)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Revalidate deployable frontend files. Vault material is never stored here.
+	w.Header().Set("Cache-Control", "no-cache")
+	http.ServeContent(w, r, name, entry.ModTime(), bytes.NewReader(data))
 }
 
 func readBoundedBody(reader io.Reader, limit int64) ([]byte, error) {
